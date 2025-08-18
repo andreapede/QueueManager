@@ -148,6 +148,14 @@ class NotificationManager:
             user_code=user_code
         )
     
+    def send_your_turn_notification(self, user_code: str, timeout_minutes: int = 3) -> bool:
+        """Send 'your turn' notification to user"""
+        return self.send_notification(
+            'your_turn', 
+            user_code=user_code,
+            timeout=timeout_minutes
+        )
+    
     def send_queue_cleared(self) -> bool:
         """Send queue cleared notification"""
         return self.send_notification('queue_cleared')
