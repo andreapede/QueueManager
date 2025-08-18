@@ -419,6 +419,18 @@ class DatabaseManager:
             row = cursor.fetchone()
             return row['position'] if row else None
     
+    def get_user_in_queue(self, user_code: str) -> Optional[Dict]:
+        """Get user's queue entry if they are currently in queue"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT q.id, q.user_code, q.timestamp, q.status, u.name as user_name
+                FROM queue q
+                JOIN users u ON q.user_code = u.code
+                WHERE q.user_code = ? AND q.status = 'waiting'
+            """, (user_code,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+    
     # Statistics and analytics methods
     def log_occupancy(self, start_time: datetime, end_time: datetime, 
                      access_type: str, user_code: str = None, 
