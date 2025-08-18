@@ -13,8 +13,15 @@ try:
     import RPi.GPIO as GPIO
     HARDWARE_AVAILABLE = True
 except ImportError:
-    HARDWARE_AVAILABLE = False
-    GPIO = None
+    try:
+        # Fallback to lgpio if available
+        import lgpio
+        GPIO = None  # We'll handle lgpio separately
+        HARDWARE_AVAILABLE = True
+    except ImportError:
+        HARDWARE_AVAILABLE = False
+        GPIO = None
+        lgpio = None
 
 from config.config import Config
 from .sensors import SensorController
