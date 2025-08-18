@@ -1,0 +1,19 @@
+[Unit]
+Description=Queue Manager System
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/QueueManager
+Environment=PATH=/home/pi/QueueManager/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/pi/QueueManager/.venv/bin/python /home/pi/QueueManager/app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
