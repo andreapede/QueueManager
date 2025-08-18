@@ -38,49 +38,18 @@ def get_status():
         if not app_instance:
             return jsonify({'error': 'System not initialized'}), 500
         
-        # Get system state
-        current_state = getattr(app_instance, 'current_state', 'UNKNOWN')
-        occupation_start = getattr(app_instance, 'occupation_start', None)
-        reserved_for_user = getattr(app_instance, 'reserved_for_user', None)
+        # Use the app's get_system_status method for consistent data
+        status = app_instance.get_system_status()
         
-        # Get queue data
-        queue_data = db_manager.get_queue() if db_manager else []
-        
-        # Get sensor data
-        sensor_data = hardware_controller.read_sensors() if hardware_controller else {}
-        
-        # Calculate occupation duration
+        # Add occupation duration for API compatibility
         occupation_duration_minutes = 0
-        if occupation_start:
-            occupation_duration_minutes = (datetime.now() - occupation_start).total_seconds() / 60
+        if app_instance.occupation_start:
+            occupation_duration_minutes = (datetime.now() - app_instance.occupation_start).total_seconds() / 60
+            status['occupation_duration_minutes'] = round(occupation_duration_minutes, 1)
         
-        # Prepare response
-        response = {
-            'status': current_state,
-            'occupied_by': reserved_for_user,
-            'occupation_start': occupation_start.isoformat() if occupation_start else None,
-            'occupation_duration_minutes': round(occupation_duration_minutes, 1),
-            'queue_size': len(queue_data),
-            'queue': [
-                {
-                    'position': i + 1,
-                    'user_code': item['user_code'],
-                    'user_name': item.get('user_name', 'Unknown'),
-                    'wait_time_minutes': (datetime.now() - datetime.fromisoformat(item['timestamp'])).seconds // 60
-                }
-                for i, item in enumerate(queue_data)
-            ],
-            'next_user': queue_data[0]['user_code'] if queue_data else None,
-            'estimated_wait_minutes': len(queue_data) * 8,  # 8 min average per person
-            'sensors': {
-                'pir_movement': sensor_data.get('pir_movement', False),
-                'ultrasonic_distance_cm': sensor_data.get('ultrasonic_distance_cm', 999),
-                'presence_detected': sensor_data.get('presence_detected', False),
-                'last_movement': sensor_data.get('last_movement_time').isoformat() if sensor_data.get('last_movement_time') else None
-            }
-        }
+        return jsonify(status)
         
-        return jsonify(response)
+        return jsonify(status)
         
     except Exception as e:
         logger.error(f"Error getting status: {e}")

@@ -156,6 +156,22 @@ class NotificationManager:
             timeout=timeout_minutes
         )
     
+    def send_no_show_notification(self, user_code: str) -> bool:
+        """Send no-show notification to user"""
+        return self.send_notification(
+            'no_show', 
+            user_code=user_code
+        )
+    
+    def send_reservation_confirmation(self, user_code: str, position: int, wait_time: int) -> bool:
+        """Send reservation confirmation notification to user"""
+        return self.send_notification(
+            'reservation_confirmed', 
+            user_code=user_code,
+            position=position,
+            wait_time=wait_time
+        )
+    
     def send_queue_cleared(self) -> bool:
         """Send queue cleared notification"""
         return self.send_notification('queue_cleared')

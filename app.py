@@ -167,7 +167,7 @@ class QueueManagerApp:
                 'position': i + 1,
                 'user_code': item['user_code'],
                 'user_name': self.db.get_user_name(item['user_code']),
-                'estimated_time': datetime.now() + timedelta(minutes=int(base_wait_time + (i * avg_duration))),
+                'estimated_time': (datetime.now() + timedelta(minutes=int(base_wait_time + (i * avg_duration)))).isoformat(),
                 'wait_time_minutes': int(base_wait_time + (i * avg_duration))
             } for i, item in enumerate(queue)],
             'next_user': queue[0]['user_code'] if queue else None,
