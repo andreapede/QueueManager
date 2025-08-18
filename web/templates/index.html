@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Manager - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .status-card {
+            text-align: center;
+        }
+        
+        .status-indicator {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .status-libero {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+        
+        .status-occupato {
+            background: linear-gradient(45deg, #f44336, #ff5722);
+        }
+        
+        .status-coda {
+            background: linear-gradient(45deg, #ff9800, #ffc107);
+        }
+        
+        .status-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .status-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .queue-card h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.3em;
+        }
+        
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .queue-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .queue-position {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .queue-user {
+            flex-grow: 1;
+            margin-left: 15px;
+        }
+        
+        .queue-user-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .queue-user-code {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .queue-wait {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .booking-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .booking-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.3em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .stat-item {
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+        
+        .admin-link:hover {
+            background: rgba(0,0,0,0.9);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Queue Manager</h1>
+            <p>Sistema di Gestione Coda Ufficio</p>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card status-card">
+                <div id="status-indicator" class="status-indicator status-libero">
+                    ✓
+                </div>
+                <div id="status-text" class="status-text">Caricamento...</div>
+                <div id="status-details" class="status-details">Connessione al sistema...</div>
+            </div>
+            
+            <div class="card queue-card">
+                <h3>📋 Coda Attuale</h3>
+                <div id="queue-list">
+                    <div class="loading">Caricamento coda</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="booking-section">
+            <h3>📝 Prenota il Tuo Posto</h3>
+            <div id="booking-alert"></div>
+            
+            <form id="booking-form">
+                <div class="form-group">
+                    <label for="user-select">Seleziona il tuo codice utente:</label>
+                    <select id="user-select" required>
+                        <option value="">Caricamento utenti...</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn" id="book-btn">📝 Prenota Posto in Coda</button>
+            </form>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div id="stat-today-visits" class="stat-value">-</div>
+                <div class="stat-label">Visite Oggi</div>
+            </div>
+            <div class="stat-item">
+                <div id="stat-avg-duration" class="stat-value">-</div>
+                <div class="stat-label">Durata Media (min)</div>
+            </div>
+            <div class="stat-item">
+                <div id="stat-queue-size" class="stat-value">-</div>
+                <div class="stat-label">Persone in Coda</div>
+            </div>
+            <div class="stat-item">
+                <div id="stat-usage-time" class="stat-value">-</div>
+                <div class="stat-label">Utilizzo Oggi (min)</div>
+            </div>
+        </div>
+    </div>
+    
+    <a href="/admin" class="admin-link">⚙️ Admin</a>
+    
+    <script>
+        // Global state
+        let currentStatus = null;
+        let users = [];
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            loadStatus();
+            loadStats();
+            
+            // Setup form submission
+            document.getElementById('booking-form').addEventListener('submit', handleBooking);
+            
+            // Auto-refresh every 5 seconds
+            setInterval(() => {
+                loadStatus();
+                loadStats();
+            }, 5000);
+        });
+        
+        // Load available users
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                
+                if (data.users) {
+                    users = data.users;
+                    populateUserSelect();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('Errore nel caricamento degli utenti', 'error');
+            }
+        }
+        
+        // Populate user select dropdown
+        function populateUserSelect() {
+            const select = document.getElementById('user-select');
+            select.innerHTML = '<option value="">Seleziona il tuo codice...</option>';
+            
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.code;
+                option.textContent = `${user.code} - ${user.name}`;
+                select.appendChild(option);
+            });
+        }
+        
+        // Load system status
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                currentStatus = data;
+                updateStatusDisplay(data);
+                updateQueueDisplay(data.queue || []);
+                
+            } catch (error) {
+                console.error('Error loading status:', error);
+                showSystemError();
+            }
+        }
+        
+        // Update status display
+        function updateStatusDisplay(status) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const statusDetails = document.getElementById('status-details');
+            
+            // Reset classes
+            indicator.className = 'status-indicator';
+            
+            switch (status.status) {
+                case 'LIBERO':
+                    indicator.classList.add('status-libero');
+                    indicator.textContent = '✓';
+                    statusText.textContent = 'Ufficio Libero';
+                    if (status.queue_size > 0) {
+                        statusDetails.textContent = `Coda: ${status.queue_size} persone in attesa`;
+                    } else {
+                        statusDetails.textContent = 'Puoi entrare direttamente';
+                    }
+                    break;
+                    
+                case 'OCCUPATO_DIRETTO':
+                case 'OCCUPATO_PRENOTATO':
+                    indicator.classList.add('status-occupato');
+                    indicator.textContent = '✖';
+                    statusText.textContent = 'Ufficio Occupato';
+                    if (status.occupation_start) {
+                        const start = new Date(status.occupation_start);
+                        const duration = Math.floor((new Date() - start) / 60000);
+                        statusDetails.textContent = `In uso da ${duration} minuti`;
+                    } else {
+                        statusDetails.textContent = 'Attualmente in uso';
+                    }
+                    break;
+                    
+                case 'RISERVATO_ATTESA':
+                    indicator.classList.add('status-coda');
+                    indicator.textContent = '⏳';
+                    statusText.textContent = 'Riservato';
+                    statusDetails.textContent = `In attesa di ${status.occupied_by || 'utente prenotato'}`;
+                    break;
+                    
+                case 'IN_CODA':
+                    indicator.classList.add('status-coda');
+                    indicator.textContent = '📋';
+                    statusText.textContent = 'Coda Attiva';
+                    statusDetails.textContent = `${status.queue_size} persone in attesa`;
+                    break;
+                    
+                default:
+                    indicator.classList.add('status-occupato');
+                    indicator.textContent = '?';
+                    statusText.textContent = 'Stato Sconosciuto';
+                    statusDetails.textContent = status.status || 'Connessione in corso...';
+            }
+        }
+        
+        // Update queue display
+        function updateQueueDisplay(queue) {
+            const queueList = document.getElementById('queue-list');
+            
+            if (queue.length === 0) {
+                queueList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">🎉 Nessuno in coda</div>';
+                return;
+            }
+            
+            let html = '';
+            queue.forEach(item => {
+                html += `
+                    <div class="queue-item">
+                        <div class="queue-position">${item.position}</div>
+                        <div class="queue-user">
+                            <div class="queue-user-name">${item.user_name || item.user_code}</div>
+                            <div class="queue-user-code">${item.user_code}</div>
+                        </div>
+                        <div class="queue-wait">${item.wait_time_minutes} min</div>
+                    </div>
+                `;
+            });
+            
+            queueList.innerHTML = html;
+        }
+        
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('stat-today-visits').textContent = data.today?.total_occupations || '0';
+                document.getElementById('stat-avg-duration').textContent = data.today?.avg_duration_minutes || '0';
+                document.getElementById('stat-queue-size').textContent = data.queue?.current_size || '0';
+                document.getElementById('stat-usage-time').textContent = data.today?.total_usage_minutes || '0';
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        // Handle booking form submission
+        async function handleBooking(event) {
+            event.preventDefault();
+            
+            const userCode = document.getElementById('user-select').value;
+            const bookBtn = document.getElementById('book-btn');
+            
+            if (!userCode) {
+                showAlert('Seleziona un codice utente', 'error');
+                return;
+            }
+            
+            // Disable button during request
+            bookBtn.disabled = true;
+            bookBtn.textContent = '⏳ Prenotazione in corso...';
+            
+            try {
+                const response = await fetch('/api/book', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_code: userCode })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`✅ ${data.message}. Posizione: ${data.position}, Attesa stimata: ${data.estimated_wait_minutes} min`, 'success');
+                    document.getElementById('user-select').value = '';
+                    
+                    // Refresh status immediately
+                    setTimeout(loadStatus, 1000);
+                } else {
+                    showAlert(`❌ ${data.message || 'Errore nella prenotazione'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Booking error:', error);
+                showAlert('❌ Errore di connessione. Riprova.', 'error');
+            } finally {
+                // Re-enable button
+                bookBtn.disabled = false;
+                bookBtn.textContent = '📝 Prenota Posto in Coda';
+            }
+        }
+        
+        // Show alert message
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('booking-alert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alertDiv.textContent = '';
+                alertDiv.className = '';
+            }, 5000);
+        }
+        
+        // Show system error
+        function showSystemError() {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const statusDetails = document.getElementById('status-details');
+            
+            indicator.className = 'status-indicator status-occupato';
+            indicator.textContent = '⚠';
+            statusText.textContent = 'Errore Sistema';
+            statusDetails.textContent = 'Impossibile connettersi al sistema';
+        }
+    </script>
+</body>
+</html>
