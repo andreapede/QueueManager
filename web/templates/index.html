@@ -260,6 +260,90 @@
             border: 1px solid #f5c6cb;
         }
         
+        .alert-info { 
+            background: #e1f5fe; 
+            color: #01579b; 
+            border: 2px solid #81d4fa; 
+        }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: modalShow 0.3s ease;
+        }
+        
+        @keyframes modalShow {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .modal-header {
+            padding: 20px 20px 0 20px;
+            text-align: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #f57c00;
+            font-size: 1.3em;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .modal-body p {
+            margin: 10px 0;
+        }
+        
+        .modal-footer {
+            padding: 0 20px 20px 20px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .modal-footer .btn {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #5a6268);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+        }
+        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -628,12 +712,15 @@
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && data.success) {
                     showAlert(`✅ ${data.message}. Posizione: ${data.position}, Attesa stimata: ${data.estimated_wait_minutes} min`, 'success');
                     document.getElementById('user-select').value = '';
                     
                     // Refresh status immediately
                     setTimeout(loadStatus, 1000);
+                } else if (response.status === 409 && data.error_code === 'ALREADY_IN_QUEUE') {
+                    // User already in queue - show choice modal
+                    showDuplicateUserModal(userCode, data);
                 } else {
                     showAlert(`❌ ${data.message || 'Errore nella prenotazione'}`, 'error');
                 }
@@ -643,6 +730,91 @@
                 showAlert('❌ Errore di connessione. Riprova.', 'error');
             } finally {
                 // Re-enable button
+                bookBtn.disabled = false;
+                bookBtn.textContent = '📝 Prenota Posto in Coda';
+            }
+        }
+
+        // Show duplicate user choice modal
+        function showDuplicateUserModal(userCode, data) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>⚠️ Utente già in coda</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${data.message}</strong></p>
+                        <p>Posizione attuale: <strong>${data.position}</strong></p>
+                        <p>Cosa vuoi fare?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="replace-position" class="btn btn-primary">
+                            🔄 Vai in fondo alla coda
+                        </button>
+                        <button id="cancel-booking" class="btn btn-secondary">
+                            ❌ Annulla
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle replace position
+            document.getElementById('replace-position').onclick = async function() {
+                modal.remove();
+                await replaceQueuePosition(userCode);
+            };
+            
+            // Handle cancel
+            document.getElementById('cancel-booking').onclick = function() {
+                modal.remove();
+                showAlert('Prenotazione annullata', 'info');
+            };
+            
+            // Close on overlay click
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                    showAlert('Prenotazione annullata', 'info');
+                }
+            };
+        }
+
+        // Replace queue position
+        async function replaceQueuePosition(userCode) {
+            const bookBtn = document.getElementById('book-btn');
+            
+            bookBtn.disabled = true;
+            bookBtn.textContent = '⏳ Spostamento in corso...';
+            
+            try {
+                const response = await fetch('/api/book/replace', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_code: userCode })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`✅ ${data.message}. Attesa stimata: ${data.estimated_wait_minutes} min`, 'success');
+                    document.getElementById('user-select').value = '';
+                    
+                    // Refresh status immediately
+                    setTimeout(loadStatus, 1000);
+                } else {
+                    showAlert(`❌ ${data.error || 'Errore nello spostamento'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Replace position error:', error);
+                showAlert('❌ Errore di connessione. Riprova.', 'error');
+            } finally {
                 bookBtn.disabled = false;
                 bookBtn.textContent = '📝 Prenota Posto in Coda';
             }

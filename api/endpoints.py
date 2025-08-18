@@ -81,7 +81,12 @@ def book_office():
         # Check if user already in queue
         existing_reservation = db_manager.get_user_in_queue(user_code)
         if existing_reservation:
-            return jsonify({'error': 'User already has an active reservation'}), 400
+            return jsonify({
+                'error': 'User already in queue',
+                'code': 'ALREADY_IN_QUEUE',
+                'existing_position': existing_reservation.get('position', 1),
+                'message': 'Sei già in coda. Vuoi sostituire la tua posizione spostandoti in fondo?'
+            }), 409  # Conflict status code
         
         # Add to queue
         reservation_id = db_manager.add_to_queue(user_code)
@@ -108,6 +113,63 @@ def book_office():
         
     except Exception as e:
         logger.error(f"Error booking office: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@api_bp.route('/book/replace', methods=['POST'])
+def replace_queue_position():
+    """Replace user's current position in queue by moving to end"""
+    try:
+        data = request.get_json()
+        user_code = data.get('user_code')
+        
+        if not user_code:
+            return jsonify({'error': 'User code required'}), 400
+        
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        # Check if user exists
+        user = db_manager.get_user(user_code)
+        if not user:
+            return jsonify({'error': 'Invalid user code'}), 400
+        
+        # Check if user is in queue
+        existing_reservation = db_manager.get_user_in_queue(user_code)
+        if not existing_reservation:
+            return jsonify({'error': 'User not in queue'}), 400
+        
+        # Remove from current position
+        old_position = db_manager.get_queue_position(user_code)
+        db_manager.remove_from_queue(user_code)
+        
+        # Add to end of queue
+        reservation_id = db_manager.add_to_queue(user_code)
+        
+        # Get new position
+        queue = db_manager.get_queue()
+        new_position = next(i + 1 for i, item in enumerate(queue) if item['id'] == reservation_id)
+        
+        # Send notification
+        if notification_manager:
+            notification_manager.send_reservation_confirmation(
+                user_code=user_code,
+                position=new_position,
+                wait_time=new_position * 8
+            )
+        
+        logger.info(f"User {user_code} replaced position from {old_position} to {new_position}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Posizione sostituita! Ora sei in posizione {new_position}',
+            'old_position': old_position,
+            'new_position': new_position,
+            'reservation_id': reservation_id,
+            'estimated_wait_minutes': new_position * 8
+        })
+        
+    except Exception as e:
+        logger.error(f"Error replacing queue position: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @api_bp.route('/queue', methods=['GET'])
@@ -641,7 +703,7 @@ def update_user(code):
             logger.info(f"Admin updated user: {code} -> {new_code} - {name}")
             return jsonify({
                 'success': True,
-                'message': f'User updated successfully',
+                'message': 'User updated successfully',
                 'user': {'code': new_code, 'name': name}
             })
         else:
