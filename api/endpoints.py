@@ -177,7 +177,7 @@ def get_users():
         if not db_manager:
             return jsonify({'error': 'Database not available'}), 500
         
-        users = db_manager.get_all_users()
+        users = db_manager.get_users()
         
         return jsonify({
             'users': [
@@ -572,7 +572,7 @@ def get_admin_users():
         if not db_manager:
             return jsonify({'error': 'Database not available'}), 500
         
-        users = db_manager.get_all_users()
+        users = db_manager.get_users()
         
         return jsonify({
             'success': True,
@@ -734,7 +734,7 @@ def delete_all_users():
             return jsonify({'error': 'Cannot delete users: there are active reservations in queue'}), 400
         
         # Get count before deletion
-        users = db_manager.get_all_users()
+        users = db_manager.get_users()
         user_count = len(users)
         
         if user_count == 0:

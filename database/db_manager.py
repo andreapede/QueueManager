@@ -322,6 +322,26 @@ class DatabaseManager:
         
         return results
     
+    def delete_all_users(self) -> bool:
+        """Delete all users (only if no history exists)"""
+        try:
+            with self.get_connection() as conn:
+                # Check if any users have queue entries or occupancy history
+                cursor = conn.execute("""
+                    SELECT 1 FROM queue WHERE user_code IS NOT NULL 
+                    UNION 
+                    SELECT 1 FROM occupancy_stats WHERE user_code IS NOT NULL 
+                    LIMIT 1
+                """)
+                if cursor.fetchone():
+                    return False  # Users have history, cannot delete
+                
+                cursor = conn.execute("DELETE FROM users")
+                conn.commit()
+                return True
+        except sqlite3.Error:
+            return False
+    
     # Queue management methods
     def get_queue(self) -> List[Dict]:
         """Get current queue ordered by timestamp"""
