@@ -88,6 +88,16 @@ def book_office():
                 'message': 'Sei già in coda. Vuoi sostituire la tua posizione spostandoti in fondo?'
             }), 409  # Conflict status code
         
+        # Check if user is currently reserved (waiting to enter within no-show timeout)
+        if app_instance and app_instance.current_state == 'RISERVATO_ATTESA':
+            if app_instance.reserved_for_user == user_code:
+                return jsonify({
+                    'error': 'User already reserved',
+                    'code': 'ALREADY_RESERVED', 
+                    'message': 'È il tuo turno! Hai ancora tempo per entrare nell\'ufficio. Vuoi rinunciare e rimetterti in coda?',
+                    'timeout_seconds': int((app_instance.reservation_timeout - datetime.now()).total_seconds()) if app_instance.reservation_timeout else 0
+                }), 409  # Conflict status code
+        
         # Add to queue
         reservation_id = db_manager.add_to_queue(user_code)
         
@@ -170,6 +180,65 @@ def replace_queue_position():
         
     except Exception as e:
         logger.error(f"Error replacing queue position: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@api_bp.route('/book/abandon_and_requeue', methods=['POST'])
+def abandon_and_requeue():
+    """Abandon current reservation and add to end of queue"""
+    try:
+        data = request.get_json()
+        user_code = data.get('user_code')
+        
+        if not user_code:
+            return jsonify({'error': 'User code required'}), 400
+        
+        if not db_manager or not app_instance:
+            return jsonify({'error': 'System not available'}), 500
+        
+        # Check if user is currently reserved
+        if (app_instance.current_state == 'RISERVATO_ATTESA' and 
+            app_instance.reserved_for_user == user_code):
+            
+            # Reset app state
+            app_instance.current_state = 'LIBERO'
+            app_instance.reserved_for_user = None
+            app_instance.reservation_timeout = None
+            
+            # Mark current reservation as abandoned
+            db_manager.mark_reservation_no_show(user_code)
+            
+            # Add user to end of queue
+            reservation_id = db_manager.add_to_queue(user_code)
+            
+            # Get new position
+            queue = db_manager.get_queue()
+            position = next(i + 1 for i, item in enumerate(queue) if item['id'] == reservation_id)
+            
+            # Process next person in queue if any
+            app_instance.process_queue()
+            
+            # Send notification
+            if notification_manager:
+                notification_manager.send_reservation_confirmation(
+                    user_code=user_code,
+                    position=position,
+                    wait_time=position * 8
+                )
+            
+            logger.info(f"User {user_code} abandoned reservation and requeued at position {position}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Prenotazione abbandonata! Aggiunto in coda in posizione {position}',
+                'new_position': position,
+                'reservation_id': reservation_id,
+                'estimated_wait_minutes': position * 8
+            })
+        else:
+            return jsonify({'error': 'User not currently reserved'}), 400
+        
+    except Exception as e:
+        logger.error(f"Error abandoning and requeuing: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @api_bp.route('/queue', methods=['GET'])

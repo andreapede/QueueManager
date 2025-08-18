@@ -387,7 +387,7 @@ class DatabaseManager:
         """Mark reservation as no-show"""
         with self.get_connection() as conn:
             conn.execute(
-                "UPDATE queue SET status = 'no_show' WHERE user_code = ? AND status = 'waiting'",
+                "UPDATE queue SET status = 'no_show' WHERE user_code = ? AND status IN ('waiting', 'reserved')",
                 (user_code,)
             )
             conn.commit()

@@ -721,6 +721,9 @@
                 } else if (response.status === 409 && data.error_code === 'ALREADY_IN_QUEUE') {
                     // User already in queue - show choice modal
                     showDuplicateUserModal(userCode, data);
+                } else if (response.status === 409 && data.error_code === 'ALREADY_RESERVED') {
+                    // User already reserved - show reservation choice modal
+                    showReservedUserModal(userCode, data);
                 } else {
                     showAlert(`❌ ${data.message || 'Errore nella prenotazione'}`, 'error');
                 }
@@ -781,6 +784,94 @@
                     showAlert('Prenotazione annullata', 'info');
                 }
             };
+        }
+
+        // Show reserved user choice modal
+        function showReservedUserModal(userCode, data) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            
+            const timeoutMinutes = Math.ceil(data.timeout_seconds / 60);
+            
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>⚠️ Hai già una prenotazione attiva</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${data.message}</strong></p>
+                        <p>Tempo rimasto per entrare: <strong>${timeoutMinutes} minuti</strong></p>
+                        <p>Cosa vuoi fare?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="abandon-and-requeue" class="btn btn-primary">
+                            🔄 Rinuncia e vai in coda
+                        </button>
+                        <button id="keep-reservation" class="btn btn-secondary">
+                            ⏳ Mantieni prenotazione
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle abandon and requeue
+            document.getElementById('abandon-and-requeue').onclick = async function() {
+                modal.remove();
+                await abandonAndRequeue(userCode);
+            };
+            
+            // Handle keep reservation
+            document.getElementById('keep-reservation').onclick = function() {
+                modal.remove();
+                showAlert('Mantieni la tua prenotazione attiva e vai in ufficio!', 'info');
+            };
+            
+            // Close on overlay click
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                    showAlert('Mantieni la tua prenotazione attiva', 'info');
+                }
+            };
+        }
+
+        // Abandon reservation and requeue
+        async function abandonAndRequeue(userCode) {
+            const bookBtn = document.getElementById('book-btn');
+            
+            bookBtn.disabled = true;
+            bookBtn.textContent = '⏳ Processo in corso...';
+            
+            try {
+                const response = await fetch('/api/book/abandon_and_requeue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_code: userCode })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`✅ ${data.message}. Attesa stimata: ${data.estimated_wait_minutes} min`, 'success');
+                    document.getElementById('user-select').value = '';
+                    
+                    // Refresh status immediately
+                    setTimeout(loadStatus, 1000);
+                } else {
+                    showAlert(`❌ ${data.error || 'Errore nel processo'}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Abandon and requeue error:', error);
+                showAlert('❌ Errore di connessione. Riprova.', 'error');
+            } finally {
+                bookBtn.disabled = false;
+                bookBtn.textContent = '📝 Prenota Posto in Coda';
+            }
         }
 
         // Replace queue position
