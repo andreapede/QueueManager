@@ -162,6 +162,8 @@ class QueueManagerApp:
             'status': self.current_state,
             'occupied_by': self.reserved_for_user,
             'occupation_start': self.occupation_start.isoformat() if self.occupation_start else None,
+            'reservation_timeout': self.reservation_timeout.isoformat() if self.reservation_timeout else None,
+            'reservation_timeout_seconds': int((self.reservation_timeout - datetime.now()).total_seconds()) if self.reservation_timeout and self.reservation_timeout > datetime.now() else 0,
             'queue_size': len(queue),
             'queue': [{
                 'position': i + 1,

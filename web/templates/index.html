@@ -158,6 +158,28 @@
             font-size: 0.9em;
         }
         
+        .no-show-timer {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .no-show-timer .timer-text {
+            color: #856404;
+            font-size: 1.1em;
+        }
+        
+        .no-show-timer .countdown {
+            color: #dc3545;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
         .booking-section {
             background: white;
             border-radius: 15px;
@@ -321,6 +343,15 @@
                 <div id="status-details" class="status-details">Connessione al sistema...</div>
             </div>
             
+            <!-- Timer No-Show -->
+            <div id="no-show-timer" class="no-show-timer" style="display: none;">
+                <div class="timer-text">⏳ Il posto si libererà automaticamente tra:</div>
+                <div id="countdown-display" class="countdown">0:00</div>
+                <div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">
+                    L'utente non si è presentato entro il tempo limite
+                </div>
+            </div>
+            
             <div class="card queue-card">
                 <h3>📋 Coda Attuale</h3>
                 <div id="queue-list">
@@ -442,6 +473,9 @@
             // Reset classes
             indicator.className = 'status-indicator';
             
+            // Update no-show timer
+            updateNoShowTimer(status);
+            
             switch (status.status) {
                 case 'LIBERO':
                     indicator.classList.add('status-libero');
@@ -523,6 +557,32 @@
             });
             
             queueList.innerHTML = html;
+        }
+        
+        // Update no-show timer
+        function updateNoShowTimer(status) {
+            const timerDiv = document.getElementById('no-show-timer');
+            const countdownDisplay = document.getElementById('countdown-display');
+            
+            // Show timer only if there's a reservation timeout
+            if (status.status === 'RISERVATO_ATTESA' && status.reservation_timeout_seconds > 0) {
+                timerDiv.style.display = 'block';
+                
+                const minutes = Math.floor(status.reservation_timeout_seconds / 60);
+                const seconds = status.reservation_timeout_seconds % 60;
+                countdownDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Change color based on remaining time
+                if (status.reservation_timeout_seconds < 30) {
+                    countdownDisplay.style.color = '#dc3545'; // Red
+                } else if (status.reservation_timeout_seconds < 60) {
+                    countdownDisplay.style.color = '#ffc107'; // Yellow
+                } else {
+                    countdownDisplay.style.color = '#28a745'; // Green
+                }
+            } else {
+                timerDiv.style.display = 'none';
+            }
         }
         
         // Load statistics
