@@ -24,7 +24,7 @@ from database.db_manager import DatabaseManager
 from hardware.hardware_controller import HardwareController
 from utils.logger import setup_logger
 from utils.notifications import NotificationManager
-from api.endpoints import api_bp
+from api.endpoints import api_bp, init_api
 
 class QueueManagerApp:
     def __init__(self):
@@ -58,6 +58,9 @@ class QueueManagerApp:
         
         # Register blueprints
         self.app.register_blueprint(api_bp, url_prefix='/api')
+        
+        # Initialize API with components
+        init_api(self.db, self.hardware, self.notifications, self)
         
         # Setup routes
         self.setup_routes()
