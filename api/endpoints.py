@@ -100,7 +100,7 @@ def book_office():
             return jsonify({'error': 'Database not available'}), 500
         
         # Check if user exists
-        user = db_manager.get_user_by_code(user_code)
+        user = db_manager.get_user(user_code)
         if not user:
             return jsonify({'error': 'Invalid user code'}), 400
         
@@ -609,12 +609,12 @@ def create_user():
             return jsonify({'error': 'Database not available'}), 500
         
         # Check if code already exists
-        existing_user = db_manager.get_user_by_code(code)
+        existing_user = db_manager.get_user(code)
         if existing_user:
             return jsonify({'error': f'Code {code} already exists'}), 400
         
         # Create user
-        success = db_manager.create_user(code, name)
+        success = db_manager.add_user(code, name)
         
         if success:
             logger.info(f"Admin created user: {code} - {name}")
@@ -655,13 +655,13 @@ def update_user(code):
             return jsonify({'error': 'Database not available'}), 500
         
         # Check if original user exists
-        original_user = db_manager.get_user_by_code(code)
+        original_user = db_manager.get_user(code)
         if not original_user:
             return jsonify({'error': f'User {code} not found'}), 404
         
         # If code changed, check if new code already exists
         if new_code != code:
-            existing_user = db_manager.get_user_by_code(new_code)
+            existing_user = db_manager.get_user(new_code)
             if existing_user:
                 return jsonify({'error': f'Code {new_code} already exists'}), 400
         
@@ -693,7 +693,7 @@ def delete_user(code):
             return jsonify({'error': 'Database not available'}), 500
         
         # Check if user exists
-        user = db_manager.get_user_by_code(code)
+        user = db_manager.get_user(code)
         if not user:
             return jsonify({'error': f'User {code} not found'}), 404
         
@@ -806,7 +806,7 @@ def import_users():
                 continue
             
             # Check if code already exists in database
-            existing_user = db_manager.get_user_by_code(code)
+            existing_user = db_manager.get_user(code)
             if existing_user:
                 errors.append(f"Line {i}: Code '{code}' already exists in database")
                 continue
@@ -829,7 +829,7 @@ def import_users():
         creation_errors = []
         
         for user_data in users_to_create:
-            success = db_manager.create_user(user_data['code'], user_data['name'])
+            success = db_manager.add_user(user_data['code'], user_data['name'])
             if success:
                 created_count += 1
             else:
