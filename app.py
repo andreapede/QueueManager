@@ -146,6 +146,18 @@ class QueueManagerApp:
         queue = self.db.get_queue()
         sensors = self.hardware.read_sensors()
         
+        # Calculate estimated wait times for each position
+        avg_duration = self.db.get_average_occupation_time() or Config.MAX_OCCUPANCY_MINUTES
+        base_wait_time = 0
+        
+        # If office is currently occupied, calculate remaining time
+        if self.current_state in ['OCCUPATO_DIRETTO', 'OCCUPATO_PRENOTATO', 'RISERVATO_ATTESA'] and self.occupation_start:
+            elapsed = (datetime.now() - self.occupation_start).total_seconds() / 60
+            base_wait_time = max(0, avg_duration - elapsed)
+        elif self.current_state == 'RISERVATO_ATTESA':
+            # If reserved but not occupied yet, add reservation timeout
+            base_wait_time = Config.RESERVATION_TIMEOUT_MINUTES
+        
         status = {
             'status': self.current_state,
             'occupied_by': self.reserved_for_user,
@@ -155,7 +167,8 @@ class QueueManagerApp:
                 'position': i + 1,
                 'user_code': item['user_code'],
                 'user_name': self.db.get_user_name(item['user_code']),
-                'wait_time_minutes': int((datetime.now() - item['timestamp']).total_seconds() / 60)
+                'estimated_time': datetime.now() + timedelta(minutes=int(base_wait_time + (i * avg_duration))),
+                'wait_time_minutes': int(base_wait_time + (i * avg_duration))
             } for i, item in enumerate(queue)],
             'next_user': queue[0]['user_code'] if queue else None,
             'estimated_wait_minutes': self.calculate_estimated_wait(),

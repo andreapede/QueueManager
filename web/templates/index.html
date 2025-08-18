@@ -501,6 +501,15 @@
             
             let html = '';
             queue.forEach(item => {
+                // Calculate estimated time display
+                let timeDisplay = '';
+                if (item.estimated_time) {
+                    const estimatedTime = new Date(item.estimated_time);
+                    timeDisplay = `~${estimatedTime.getHours().toString().padStart(2, '0')}:${estimatedTime.getMinutes().toString().padStart(2, '0')}`;
+                } else {
+                    timeDisplay = `${item.wait_time_minutes} min`;
+                }
+                
                 html += `
                     <div class="queue-item">
                         <div class="queue-position">${item.position}</div>
@@ -508,7 +517,7 @@
                             <div class="queue-user-name">${item.user_name || item.user_code}</div>
                             <div class="queue-user-code">${item.user_code}</div>
                         </div>
-                        <div class="queue-wait">${item.wait_time_minutes} min</div>
+                        <div class="queue-wait">${timeDisplay}</div>
                     </div>
                 `;
             });
