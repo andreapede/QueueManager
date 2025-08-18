@@ -136,11 +136,6 @@
         
         <form id="login-form">
             <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
-            </div>
-            
-            <div class="form-group">
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
@@ -161,13 +156,12 @@
         async function handleLogin(event) {
             event.preventDefault();
             
-            const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const loginBtn = document.getElementById('login-btn');
             
             // Basic validation
-            if (!username || !password) {
-                showAlert('Inserisci username e password', 'error');
+            if (!password) {
+                showAlert('Inserisci la password', 'error');
                 return;
             }
             
@@ -179,21 +173,20 @@
                 const response = await fetch('/admin/login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: JSON.stringify({ 
-                        username: username, 
-                        password: password 
-                    })
+                    body: `password=${encodeURIComponent(password)}`
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Redirect to admin dashboard
-                    window.location.href = '/admin/dashboard';
+                if (response.redirected) {
+                    // Flask redirect - follow it
+                    window.location.href = response.url;
+                } else if (response.ok) {
+                    // Success - redirect to admin
+                    window.location.href = '/admin';
                 } else {
-                    showAlert(data.message || 'Credenziali non valide', 'error');
+                    // Error - show error message
+                    showAlert('Password non corretta', 'error');
                 }
                 
             } catch (error) {
