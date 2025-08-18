@@ -95,6 +95,18 @@ class QueueManagerApp:
             session.pop('admin_logged_in', None)
             session.pop('admin_login_time', None)
             return redirect(url_for('index'))
+        
+        @self.app.route('/admin/config')
+        def admin_config():
+            if not self.check_admin_session():
+                return redirect(url_for('admin_login'))
+            return render_template('admin_config.html')
+        
+        @self.app.route('/admin/users')
+        def admin_users():
+            if not self.check_admin_session():
+                return redirect(url_for('admin_login'))
+            return render_template('admin_users.html')
     
     def setup_socketio_events(self):
         """Setup SocketIO events for real-time updates"""

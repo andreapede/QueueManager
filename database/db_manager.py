@@ -218,6 +218,110 @@ class DatabaseManager:
         except sqlite3.IntegrityError:
             return False
     
+    def update_user(self, user_code: str, name: str) -> bool:
+        """Update user name"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    "UPDATE users SET name = ? WHERE code = ?",
+                    (name, user_code)
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error:
+            return False
+    
+    def delete_user(self, user_code: str) -> bool:
+        """Delete user if not in queue or has no history"""
+        try:
+            with self.get_connection() as conn:
+                # Check if user has queue entries or occupancy history
+                cursor = conn.execute(
+                    "SELECT 1 FROM queue WHERE user_code = ? UNION SELECT 1 FROM occupancy_stats WHERE user_code = ? LIMIT 1",
+                    (user_code, user_code)
+                )
+                if cursor.fetchone():
+                    return False  # User has history, cannot delete
+                
+                cursor = conn.execute(
+                    "DELETE FROM users WHERE code = ?",
+                    (user_code,)
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error:
+            return False
+    
+    def get_user(self, user_code: str) -> Optional[Dict]:
+        """Get user details by code"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT code, name FROM users WHERE code = ?",
+                (user_code,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+    
+    def validate_user_code(self, user_code: str) -> bool:
+        """Validate user code format (2 digits)"""
+        import re
+        return bool(re.match(r'^\d{2}$', user_code))
+    
+    def bulk_delete_users(self, user_codes: List[str]) -> Dict[str, bool]:
+        """Delete multiple users, returns dict with success/failure for each"""
+        results = {}
+        for code in user_codes:
+            results[code] = self.delete_user(code)
+        return results
+    
+    def import_users_from_csv(self, csv_data: str) -> Dict[str, Any]:
+        """Import users from CSV data"""
+        import csv
+        from io import StringIO
+        
+        results = {
+            'success': 0,
+            'errors': 0,
+            'duplicates': 0,
+            'invalid': 0,
+            'details': []
+        }
+        
+        try:
+            csv_file = StringIO(csv_data)
+            reader = csv.DictReader(csv_file)
+            
+            for row_num, row in enumerate(reader, start=2):  # Start from 2 (accounting for header)
+                code = row.get('code', '').strip()
+                name = row.get('name', '').strip()
+                
+                if not code or not name:
+                    results['invalid'] += 1
+                    results['details'].append(f"Riga {row_num}: Codice o nome mancante")
+                    continue
+                
+                if not self.validate_user_code(code):
+                    results['invalid'] += 1
+                    results['details'].append(f"Riga {row_num}: Codice '{code}' non valido (deve essere 2 cifre)")
+                    continue
+                
+                if self.user_exists(code):
+                    results['duplicates'] += 1
+                    results['details'].append(f"Riga {row_num}: Utente '{code}' già esistente")
+                    continue
+                
+                if self.add_user(code, name):
+                    results['success'] += 1
+                else:
+                    results['errors'] += 1
+                    results['details'].append(f"Riga {row_num}: Errore nell'aggiungere utente '{code}'")
+                    
+        except Exception as e:
+            results['details'].append(f"Errore nella lettura del CSV: {str(e)}")
+            results['errors'] += 1
+        
+        return results
+    
     # Queue management methods
     def get_queue(self) -> List[Dict]:
         """Get current queue ordered by timestamp"""

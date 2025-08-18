@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Manager - Configurazione Sistema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2em;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+        }
+        
+        .config-form {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        .form-help {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Configurazione Sistema</h1>
+            <a href="/admin" class="back-btn">← Torna alla Dashboard</a>
+        </div>
+        
+        <div id="alert-container"></div>
+        
+        <form id="config-form" class="config-form">
+            <!-- Impostazioni Temporali -->
+            <div class="form-section">
+                <h3>⏰ Impostazioni Temporali</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reservation_timeout">Timeout Prenotazione (minuti)</label>
+                        <input type="number" id="reservation_timeout" name="reservation_timeout_minutes" 
+                               min="1" max="15" value="3">
+                        <div class="form-help">Tempo massimo per presentarsi dopo la prenotazione</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max_occupancy">Occupazione Massima (minuti)</label>
+                        <input type="number" id="max_occupancy" name="max_occupancy_minutes" 
+                               min="5" max="60" value="10">
+                        <div class="form-help">Tempo massimo di utilizzo dell'ufficio</div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="movement_timeout">Timeout Movimento (minuti)</label>
+                        <input type="number" id="movement_timeout" name="movement_timeout_minutes" 
+                               min="1" max="10" value="5">
+                        <div class="form-help">Tempo dopo il quale viene richiesto movimento</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="auto_reset_time">Reset Automatico</label>
+                        <input type="time" id="auto_reset_time" name="auto_reset_time" value="23:59">
+                        <div class="form-help">Orario di reset giornaliero del sistema</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Impostazioni Coda -->
+            <div class="form-section">
+                <h3>👥 Impostazioni Coda</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="max_queue_size">Dimensione Massima Coda</label>
+                        <input type="number" id="max_queue_size" name="max_queue_size" 
+                               min="1" max="20" value="7">
+                        <div class="form-help">Numero massimo di persone in coda</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="conflict_priority">Priorità Conflitti</label>
+                        <select id="conflict_priority" name="conflict_priority">
+                            <option value="presence">Presenza Fisica</option>
+                            <option value="reservation">Prenotazione</option>
+                        </select>
+                        <div class="form-help">Chi ha priorità in caso di conflitto</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Impostazioni Sensori -->
+            <div class="form-section">
+                <h3>🔍 Impostazioni Sensori</h3>
+                
+                <div class="form-row">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="use_pir" name="use_pir_sensor">
+                        <label for="use_pir">Usa Sensore PIR</label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="use_ultrasonic" name="use_ultrasonic_sensor">
+                        <label for="use_ultrasonic">Usa Sensore Ultrasonico</label>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="presence_threshold">Soglia Presenza (cm)</label>
+                        <input type="number" id="presence_threshold" name="presence_threshold_cm" 
+                               min="50" max="400" value="200">
+                        <div class="form-help">Distanza sotto la quale si rileva presenza</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dual_sensor_mode">Modalità Sensori Multipli</label>
+                        <select id="dual_sensor_mode" name="dual_sensor_mode">
+                            <option value="AND">AND (entrambi devono confermare)</option>
+                            <option value="OR">OR (almeno uno deve confermare)</option>
+                        </select>
+                        <div class="form-help">Come combinare i risultati dei sensori</div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pir_absence_seconds">Assenza PIR (secondi)</label>
+                        <input type="number" id="pir_absence_seconds" name="pir_absence_seconds" 
+                               min="10" max="300" value="30">
+                        <div class="form-help">Secondi di assenza prima di considerare ufficio libero</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ultrasonic_polling">Polling Ultrasonico (secondi)</label>
+                        <input type="number" id="ultrasonic_polling" name="ultrasonic_polling_seconds" 
+                               min="1" max="10" value="2">
+                        <div class="form-help">Frequenza lettura sensore ultrasonico</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notifiche -->
+            <div class="form-section">
+                <h3>📱 Notifiche</h3>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="pushover_enabled" name="pushover_enabled">
+                    <label for="pushover_enabled">Abilita Notifiche Pushover</label>
+                </div>
+                
+                <div class="form-row" id="pushover-settings" style="display: none;">
+                    <div class="form-group">
+                        <label for="pushover_user_key">User Key Pushover</label>
+                        <input type="text" id="pushover_user_key" name="pushover_user_key" 
+                               placeholder="Inserisci User Key">
+                        <div class="form-help">Chiave utente per le notifiche Pushover</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pushover_api_token">API Token Pushover</label>
+                        <input type="text" id="pushover_api_token" name="pushover_api_token" 
+                               placeholder="Inserisci API Token">
+                        <div class="form-help">Token API per l'applicazione Pushover</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sicurezza -->
+            <div class="form-section">
+                <h3>🔒 Sicurezza</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="session_timeout">Timeout Sessione (minuti)</label>
+                        <input type="number" id="session_timeout" name="session_timeout_minutes" 
+                               min="10" max="120" value="30">
+                        <div class="form-help">Durata sessione amministratore</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max_login_attempts">Tentativi Login Massimi</label>
+                        <input type="number" id="max_login_attempts" name="max_login_attempts" 
+                               min="3" max="10" value="3">
+                        <div class="form-help">Numero massimo di tentativi di login</div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lockout_duration">Durata Blocco (minuti)</label>
+                        <input type="number" id="lockout_duration" name="lockout_duration_minutes" 
+                               min="5" max="60" value="15">
+                        <div class="form-help">Durata blocco dopo troppi tentativi</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new_admin_password">Nuova Password Admin</label>
+                        <input type="password" id="new_admin_password" name="new_admin_password" 
+                               placeholder="Lascia vuoto per non cambiare">
+                        <div class="form-help">Nuova password amministratore (opzionale)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding-top: 20px;">
+                <button type="button" class="btn btn-success" onclick="saveConfiguration()">
+                    💾 Salva Configurazione
+                </button>
+                <button type="button" class="btn btn-danger" onclick="resetToDefaults()">
+                    🔄 Ripristina Default
+                </button>
+                <button type="button" class="btn btn-primary" onclick="testConfiguration()">
+                    🧪 Test Configurazione
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Load current configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentConfiguration();
+            
+            // Show/hide Pushover settings based on checkbox
+            document.getElementById('pushover_enabled').addEventListener('change', function() {
+                const pushoverSettings = document.getElementById('pushover-settings');
+                pushoverSettings.style.display = this.checked ? 'block' : 'none';
+            });
+        });
+        
+        async function loadCurrentConfiguration() {
+            try {
+                const response = await fetch('/api/admin/config');
+                const config = await response.json();
+                
+                if (config.success) {
+                    populateForm(config.config);
+                } else {
+                    showAlert('Errore caricamento configurazione', 'danger');
+                }
+            } catch (error) {
+                console.error('Error loading configuration:', error);
+                showAlert('Errore di connessione durante il caricamento', 'danger');
+            }
+        }
+        
+        function populateForm(config) {
+            // Populate all form fields with current config values
+            Object.keys(config).forEach(key => {
+                const element = document.querySelector(`[name="${key}"]`);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = config[key] === true || config[key] === 'true';
+                    } else {
+                        element.value = config[key];
+                    }
+                }
+            });
+            
+            // Trigger Pushover settings visibility
+            document.getElementById('pushover_enabled').dispatchEvent(new Event('change'));
+        }
+        
+        async function saveConfiguration() {
+            const formData = new FormData(document.getElementById('config-form'));
+            const config = {};
+            
+            // Convert form data to object
+            for (let [key, value] of formData.entries()) {
+                const element = document.querySelector(`[name="${key}"]`);
+                if (element && element.type === 'checkbox') {
+                    config[key] = element.checked;
+                } else if (element && element.type === 'number') {
+                    config[key] = parseInt(value);
+                } else {
+                    config[key] = value;
+                }
+            }
+            
+            try {
+                const response = await fetch('/api/admin/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('✅ Configurazione salvata con successo!', 'success');
+                    
+                    // Reload configuration after 2 seconds
+                    setTimeout(() => {
+                        loadCurrentConfiguration();
+                    }, 2000);
+                } else {
+                    showAlert('❌ Errore nel salvataggio: ' + (result.error || 'Errore sconosciuto'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error saving configuration:', error);
+                showAlert('❌ Errore di connessione durante il salvataggio', 'danger');
+            }
+        }
+        
+        async function resetToDefaults() {
+            if (!confirm('⚠️ Sei sicuro di voler ripristinare la configurazione di default?\n\nQuesta operazione sovrascriverà tutte le impostazioni correnti.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/config/reset', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('✅ Configurazione ripristinata ai valori di default', 'success');
+                    loadCurrentConfiguration();
+                } else {
+                    showAlert('❌ Errore nel ripristino: ' + (result.error || 'Errore sconosciuto'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error resetting configuration:', error);
+                showAlert('❌ Errore di connessione durante il ripristino', 'danger');
+            }
+        }
+        
+        async function testConfiguration() {
+            showAlert('🧪 Test configurazione in corso...', 'warning');
+            
+            try {
+                const response = await fetch('/api/admin/config/test', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    let message = '✅ Test configurazione completato:\n\n';
+                    Object.keys(result.tests).forEach(test => {
+                        message += `${test}: ${result.tests[test] ? '✅' : '❌'}\n`;
+                    });
+                    
+                    showAlert(message.replace(/\n/g, '<br>'), result.allPassed ? 'success' : 'warning');
+                } else {
+                    showAlert('❌ Errore durante il test: ' + (result.error || 'Errore sconosciuto'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error testing configuration:', error);
+                showAlert('❌ Errore di connessione durante il test', 'danger');
+            }
+        }
+        
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            // Auto-hide after 8 seconds for non-error messages
+            if (type !== 'danger') {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 8000);
+            }
+        }
+    </script>
+</body>
+</html>
