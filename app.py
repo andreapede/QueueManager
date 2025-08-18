@@ -28,7 +28,9 @@ from api.endpoints import api_bp
 
 class QueueManagerApp:
     def __init__(self):
-        self.app = Flask(__name__)
+        self.app = Flask(__name__, 
+                         template_folder='web/templates',
+                         static_folder='web/static')
         self.app.config.from_object(Config)
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
         

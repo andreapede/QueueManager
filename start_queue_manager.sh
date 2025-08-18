@@ -19,6 +19,21 @@ fi
 # Crea directory per logs se non esiste
 mkdir -p logs
 mkdir -p data
+mkdir -p web/static/css
+mkdir -p web/static/js
+
+# Verifica che i template esistano
+if [ ! -f "web/templates/index.html" ]; then
+    echo "❌ Template index.html not found!"
+    exit 1
+fi
+
+if [ ! -f "web/templates/admin_login.html" ]; then
+    echo "❌ Template admin_login.html not found!"
+    exit 1
+fi
+
+echo "✅ Templates found"
 
 # Verifica permissions per GPIO (se hardware presente)
 if [ -c "/dev/gpiomem" ]; then
