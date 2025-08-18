@@ -180,7 +180,8 @@
                     <p><strong>Max Occupazione:</strong> <span id="max-occupancy">10</span> min</p>
                     <p><strong>Max Coda:</strong> <span id="max-queue">7</span> persone</p>
                 </div>
-                <button class="btn" onclick="editConfig()">✏️ Modifica Configurazione</button>
+                <button class="btn" onclick="editConfig()">⚙️ Configura Sistema</button>
+                <button class="btn" onclick="manageUsers()">👥 Gestione Utenti</button>
             </div>
         </div>
         
@@ -295,6 +296,11 @@
         function editConfig() {
             // Redirect to config page
             window.location.href = '/admin/config';
+        }
+        
+        function manageUsers() {
+            // Redirect to users management page
+            window.location.href = '/admin/users';
         }
         
         function showAlert(message, type) {
