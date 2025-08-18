@@ -98,6 +98,39 @@ def book_office():
                     'timeout_seconds': int((app_instance.reservation_timeout - datetime.now()).total_seconds()) if app_instance.reservation_timeout else 0
                 }), 409  # Conflict status code
         
+        # If office is free, activate reservation immediately
+        if app_instance and app_instance.current_state == 'LIBERO':
+            # Add to queue first
+            reservation_id = db_manager.add_to_queue(user_code)
+            
+            # Then immediately activate the reservation
+            from datetime import timedelta
+            app_instance.current_state = 'RISERVATO_ATTESA'
+            app_instance.reserved_for_user = user_code
+            app_instance.reservation_timeout = datetime.now() + timedelta(minutes=Config.RESERVATION_TIMEOUT_MINUTES)
+            
+            # Mark as active in database
+            db_manager.mark_reservation_active(reservation_id)
+            
+            # Send your turn notification
+            if notification_manager:
+                notification_manager.send_your_turn_notification(
+                    user_code=user_code,
+                    timeout_minutes=Config.RESERVATION_TIMEOUT_MINUTES
+                )
+            
+            logger.info(f"Office was free - activated reservation immediately for {user_code}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'È il tuo turno! Vai in ufficio entro 5 minuti',
+                'reservation_id': reservation_id,
+                'position': 1,  # First in line
+                'estimated_wait_minutes': 0,  # No wait time
+                'immediate_access': True
+            })
+        
+        # Office is occupied/reserved - add to queue normally
         # Add to queue
         reservation_id = db_manager.add_to_queue(user_code)
         
