@@ -494,16 +494,22 @@ def get_admin_config():
         return jsonify({'error': 'Not authenticated'}), 401
     
     try:
+        logger.info("Admin config GET request received")
+        
         # Get all configuration values from database
         if not db_manager:
+            logger.error("Database manager not available")
             return jsonify({'error': 'Database not available'}), 500
             
         config_data = db_manager.get_all_config()
+        logger.info(f"Raw config data from database: {config_data}")
         
         # If database is empty, initialize with defaults
         if not config_data:
+            logger.info("Config data empty, initializing defaults")
             db_manager.init_default_config()
             config_data = db_manager.get_all_config()
+            logger.info(f"Config data after init: {config_data}")
         
         # Convert string values to appropriate types for frontend
         processed_config = {}
@@ -518,25 +524,15 @@ def get_admin_config():
             else:
                 processed_config[key] = value
         
-        return jsonify({
+        logger.info(f"Processed config data: {processed_config}")
+        
+        response_data = {
             'success': True,
             'config': processed_config
-        })
+        }
         
-    except Exception as e:
-        logger.error(f"Error getting admin config: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-        config_data['pushover_api_token'] = Config.PUSHOVER_API_TOKEN if Config.PUSHOVER_ENABLED else ''
-        
-        # Security settings
-        config_data['session_timeout_minutes'] = Config.SESSION_TIMEOUT_MINUTES
-        config_data['max_login_attempts'] = Config.MAX_LOGIN_ATTEMPTS
-        config_data['lockout_duration_minutes'] = Config.LOCKOUT_DURATION_MINUTES
-        
-        return jsonify({
-            'success': True,
-            'config': config_data
-        })
+        logger.info(f"Sending response: {response_data}")
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error getting admin config: {e}")

@@ -410,13 +410,19 @@
         
         async function loadCurrentConfiguration() {
             try {
+                console.log('Loading configuration from /api/admin/config');
                 const response = await fetch('/api/admin/config');
-                const config = await response.json();
+                const data = await response.json();
                 
-                if (config.success) {
-                    populateForm(config.config);
+                console.log('API Response:', data);
+                
+                if (data.success) {
+                    console.log('Configuration loaded successfully:', data.config);
+                    populateForm(data.config);
+                    showAlert('Configurazione caricata dal database', 'success');
                 } else {
-                    showAlert('Errore caricamento configurazione', 'danger');
+                    console.error('API returned error:', data);
+                    showAlert('Errore caricamento configurazione: ' + (data.error || 'Unknown'), 'danger');
                 }
             } catch (error) {
                 console.error('Error loading configuration:', error);
@@ -425,15 +431,23 @@
         }
         
         function populateForm(config) {
+            console.log('Populating form with config:', config);
+            
             // Populate all form fields with current config values
             Object.keys(config).forEach(key => {
                 const element = document.querySelector(`[name="${key}"]`);
+                console.log(`Looking for field [name="${key}"], found:`, element, 'value:', config[key]);
+                
                 if (element) {
                     if (element.type === 'checkbox') {
                         element.checked = config[key] === true || config[key] === 'true';
+                        console.log(`Set checkbox ${key} to:`, element.checked);
                     } else {
                         element.value = config[key];
+                        console.log(`Set field ${key} to:`, element.value);
                     }
+                } else {
+                    console.warn(`Field [name="${key}"] not found in form`);
                 }
             });
             
