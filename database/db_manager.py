@@ -628,3 +628,75 @@ class DatabaseManager:
             info['today_occupations'] = cursor.fetchone()['count']
             
             return info
+
+    def get_config_value(self, key: str, default_value=None):
+        """Get a configuration value from database"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("SELECT value FROM config WHERE key = ?", (key,))
+                row = cursor.fetchone()
+                if row:
+                    return row['value']
+                return default_value
+        except Exception as e:
+            self.logger.error(f"Error getting config value {key}: {e}")
+            return default_value
+    
+    def set_config_value(self, key: str, value, description: str = None):
+        """Set a configuration value in database"""
+        try:
+            with self.get_connection() as conn:
+                # Convert value to string for storage
+                str_value = str(value)
+                
+                conn.execute("""
+                    INSERT OR REPLACE INTO config (key, value, description, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """, (key, str_value, description))
+                conn.commit()
+                return True
+        except Exception as e:
+            self.logger.error(f"Error setting config value {key}: {e}")
+            return False
+    
+    def init_default_config(self):
+        """Initialize default configuration values"""
+        from config.config import Config
+        
+        default_configs = [
+            ('reservation_timeout_minutes', Config.RESERVATION_TIMEOUT_MINUTES, 'Timeout prenotazione in minuti'),
+            ('max_occupancy_minutes', Config.MAX_OCCUPANCY_MINUTES, 'Durata massima occupazione in minuti'),
+            ('max_queue_size', Config.MAX_QUEUE_SIZE, 'Dimensione massima della coda'),
+            ('movement_timeout_minutes', Config.MOVEMENT_TIMEOUT_MINUTES, 'Timeout movimento in minuti'),
+            ('auto_reset_time', Config.AUTO_RESET_TIME, 'Orario reset automatico'),
+            ('conflict_priority', Config.CONFLICT_PRIORITY, 'Priorità in caso di conflitto'),
+            ('use_pir_sensor', Config.USE_PIR_SENSOR, 'Usa sensore PIR'),
+            ('use_ultrasonic_sensor', Config.USE_ULTRASONIC_SENSOR, 'Usa sensore ultrasonico'),
+            ('presence_threshold_cm', Config.PRESENCE_THRESHOLD_CM, 'Soglia presenza in cm'),
+            ('dual_sensor_mode', Config.DUAL_SENSOR_MODE, 'Modalità sensori multipli'),
+            ('pir_absence_seconds', Config.PIR_ABSENCE_SECONDS, 'Secondi assenza PIR'),
+            ('ultrasonic_polling_seconds', Config.ULTRASONIC_POLLING_SECONDS, 'Frequenza polling ultrasonico'),
+            ('pushover_enabled', Config.PUSHOVER_ENABLED, 'Abilita notifiche Pushover'),
+            ('pushover_user_key', Config.PUSHOVER_USER_KEY, 'Chiave utente Pushover'),
+            ('pushover_api_token', Config.PUSHOVER_API_TOKEN, 'Token API Pushover'),
+            ('session_timeout_minutes', Config.SESSION_TIMEOUT_MINUTES, 'Timeout sessione admin'),
+            ('max_login_attempts', Config.MAX_LOGIN_ATTEMPTS, 'Tentativi massimi login'),
+            ('lockout_duration_minutes', Config.LOCKOUT_DURATION_MINUTES, 'Durata blocco login'),
+        ]
+        
+        try:
+            with self.get_connection() as conn:
+                for key, value, description in default_configs:
+                    # Solo se non esiste già
+                    cursor = conn.execute("SELECT COUNT(*) as count FROM config WHERE key = ?", (key,))
+                    if cursor.fetchone()['count'] == 0:
+                        conn.execute("""
+                            INSERT INTO config (key, value, description)
+                            VALUES (?, ?, ?)
+                        """, (key, str(value), description))
+                conn.commit()
+                self.logger.info("Default configuration initialized")
+                return True
+        except Exception as e:
+            self.logger.error(f"Error initializing default config: {e}")
+            return False

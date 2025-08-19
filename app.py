@@ -20,6 +20,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # Import custom modules
 from config.config import Config
+from config.dynamic_config import DynamicConfig, dynamic_config
 from database.db_manager import DatabaseManager
 from hardware.hardware_controller import HardwareController
 from utils.logger import setup_logger
@@ -36,6 +37,17 @@ class QueueManagerApp:
         
         # Initialize components
         self.db = DatabaseManager()
+        
+        # Initialize dynamic configuration
+        global dynamic_config
+        if not dynamic_config:
+            import config.dynamic_config
+            config.dynamic_config.dynamic_config = DynamicConfig(self.db)
+            dynamic_config = config.dynamic_config.dynamic_config
+            
+        # Initialize default config in database if needed
+        self.db.init_default_config()
+        
         self.hardware = HardwareController()
         self.notifications = NotificationManager()
         self.logger = setup_logger('QueueManager')
@@ -67,6 +79,11 @@ class QueueManagerApp:
         self.setup_socketio_events()
         
         self.logger.info("QueueManagerApp initialized")
+    
+    def get_dynamic_config(self):
+        """Get dynamic configuration instance"""
+        from config.dynamic_config import get_config
+        return get_config()
     
     def setup_routes(self):
         """Setup Flask routes"""
@@ -284,7 +301,7 @@ class QueueManagerApp:
             next_reservation = queue[0]
             self.current_state = 'RISERVATO_ATTESA'
             self.reserved_for_user = next_reservation['user_code']
-            self.reservation_timeout = datetime.now() + timedelta(minutes=Config.RESERVATION_TIMEOUT_MINUTES)
+            self.reservation_timeout = datetime.now() + timedelta(minutes=self.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES)
             
             # Mark as active
             self.db.mark_reservation_active(next_reservation['id'])
@@ -292,7 +309,7 @@ class QueueManagerApp:
             # Send notification
             self.notifications.send_your_turn_notification(
                 user_code=self.reserved_for_user,
-                timeout_minutes=Config.RESERVATION_TIMEOUT_MINUTES
+                timeout_minutes=self.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES
             )
             
             self.logger.info(f"Activated reservation for {self.reserved_for_user}")
@@ -368,7 +385,7 @@ class QueueManagerApp:
             
             # Check queue size limit
             queue = self.db.get_queue()
-            if len(queue) >= Config.MAX_QUEUE_SIZE:
+            if len(queue) >= self.get_dynamic_config().MAX_QUEUE_SIZE:
                 return {'success': False, 'message': 'Coda piena, riprovare più tardi'}
             
             # Check if user already in queue

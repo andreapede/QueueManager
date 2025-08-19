@@ -494,30 +494,38 @@ def get_admin_config():
         return jsonify({'error': 'Not authenticated'}), 401
     
     try:
-        # Get all configuration values from Config class
-        config_data = {}
+        # Get all configuration values from database
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+            
+        config_data = db_manager.get_all_config()
         
-        # Time settings
-        config_data['reservation_timeout_minutes'] = Config.RESERVATION_TIMEOUT_MINUTES
-        config_data['max_occupancy_minutes'] = Config.MAX_OCCUPANCY_MINUTES
-        config_data['movement_timeout_minutes'] = Config.MOVEMENT_TIMEOUT_MINUTES
-        config_data['auto_reset_time'] = Config.AUTO_RESET_TIME
+        # If database is empty, initialize with defaults
+        if not config_data:
+            db_manager.init_default_config()
+            config_data = db_manager.get_all_config()
         
-        # Queue settings
-        config_data['max_queue_size'] = Config.MAX_QUEUE_SIZE
-        config_data['conflict_priority'] = Config.CONFLICT_PRIORITY
+        # Convert string values to appropriate types for frontend
+        processed_config = {}
+        for key, value in config_data.items():
+            if key in ['reservation_timeout_minutes', 'max_occupancy_minutes', 'max_queue_size',
+                      'movement_timeout_minutes', 'presence_threshold_cm', 'pir_absence_seconds',
+                      'ultrasonic_polling_seconds', 'session_timeout_minutes', 'max_login_attempts',
+                      'lockout_duration_minutes']:
+                processed_config[key] = int(value)
+            elif key in ['use_pir_sensor', 'use_ultrasonic_sensor', 'pushover_enabled']:
+                processed_config[key] = str(value).lower() in ('true', '1', 'yes', 'on')
+            else:
+                processed_config[key] = value
         
-        # Sensor settings
-        config_data['use_pir_sensor'] = Config.USE_PIR_SENSOR
-        config_data['use_ultrasonic_sensor'] = Config.USE_ULTRASONIC_SENSOR
-        config_data['presence_threshold_cm'] = Config.PRESENCE_THRESHOLD_CM
-        config_data['dual_sensor_mode'] = Config.DUAL_SENSOR_MODE
-        config_data['pir_absence_seconds'] = Config.PIR_ABSENCE_SECONDS
-        config_data['ultrasonic_polling_seconds'] = Config.ULTRASONIC_POLLING_SECONDS
+        return jsonify({
+            'success': True,
+            'config': processed_config
+        })
         
-        # Notification settings
-        config_data['pushover_enabled'] = Config.PUSHOVER_ENABLED
-        config_data['pushover_user_key'] = Config.PUSHOVER_USER_KEY if Config.PUSHOVER_ENABLED else ''
+    except Exception as e:
+        logger.error(f"Error getting admin config: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
         config_data['pushover_api_token'] = Config.PUSHOVER_API_TOKEN if Config.PUSHOVER_ENABLED else ''
         
         # Security settings
@@ -543,49 +551,82 @@ def update_admin_config():
     try:
         config_updates = request.get_json()
         
-        # Validate and update configuration
-        # Note: In a real implementation, you would want to:
-        # 1. Validate all values
-        # 2. Save to a config file or database
-        # 3. Apply changes to running system
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
         
-        # For now, we'll just log the changes
-        logger.info(f"Admin config update requested: {config_updates}")
-        
-        # Simulate updating some runtime values
+        # Validate and save configuration to database
         updated_keys = []
+        errors = []
         
-        # Update specific config values that can be changed at runtime
-        if 'reservation_timeout_minutes' in config_updates:
-            Config.RESERVATION_TIMEOUT_MINUTES = int(config_updates['reservation_timeout_minutes'])
-            updated_keys.append('reservation_timeout_minutes')
+        # Define field descriptions
+        descriptions = {
+            'reservation_timeout_minutes': 'Timeout prenotazione in minuti',
+            'max_occupancy_minutes': 'Durata massima occupazione in minuti',
+            'max_queue_size': 'Dimensione massima della coda',
+            'movement_timeout_minutes': 'Timeout movimento in minuti',
+            'auto_reset_time': 'Orario reset automatico',
+            'conflict_priority': 'Priorità in caso di conflitto',
+            'use_pir_sensor': 'Usa sensore PIR',
+            'use_ultrasonic_sensor': 'Usa sensore ultrasonico',
+            'presence_threshold_cm': 'Soglia presenza in cm',
+            'dual_sensor_mode': 'Modalità sensori multipli',
+            'pir_absence_seconds': 'Secondi assenza PIR',
+            'ultrasonic_polling_seconds': 'Frequenza polling ultrasonico',
+            'pushover_enabled': 'Abilita notifiche Pushover',
+            'pushover_user_key': 'Chiave utente Pushover',
+            'pushover_api_token': 'Token API Pushover',
+            'session_timeout_minutes': 'Timeout sessione admin',
+            'max_login_attempts': 'Tentativi massimi login',
+            'lockout_duration_minutes': 'Durata blocco login',
+        }
         
-        if 'max_occupancy_minutes' in config_updates:
-            Config.MAX_OCCUPANCY_MINUTES = int(config_updates['max_occupancy_minutes'])
-            updated_keys.append('max_occupancy_minutes')
+        # Update each configuration value
+        for key, value in config_updates.items():
+            if key == 'new_admin_password':
+                # Skip password field for now
+                continue
+                
+            try:
+                # Validate numeric fields
+                if key in ['reservation_timeout_minutes', 'max_occupancy_minutes', 'max_queue_size',
+                          'movement_timeout_minutes', 'presence_threshold_cm', 'pir_absence_seconds',
+                          'ultrasonic_polling_seconds', 'session_timeout_minutes', 'max_login_attempts',
+                          'lockout_duration_minutes']:
+                    value = int(value)
+                    if value < 1:
+                        errors.append(f"Valore {key} deve essere positivo")
+                        continue
+                
+                # Save to database
+                description = descriptions.get(key, '')
+                if db_manager.set_config_value(key, value, description):
+                    updated_keys.append(key)
+                else:
+                    errors.append(f"Errore salvando {key}")
+                    
+            except ValueError:
+                errors.append(f"Valore non valido per {key}")
         
-        if 'max_queue_size' in config_updates:
-            Config.MAX_QUEUE_SIZE = int(config_updates['max_queue_size'])
-            updated_keys.append('max_queue_size')
+        if errors:
+            return jsonify({
+                'success': False,
+                'errors': errors,
+                'updated_keys': updated_keys
+            }), 400
         
-        if 'conflict_priority' in config_updates:
-            Config.CONFLICT_PRIORITY = config_updates['conflict_priority']
-            updated_keys.append('conflict_priority')
+        # Clear cache for dynamic config if it exists
+        try:
+            from config.dynamic_config import dynamic_config
+            if dynamic_config:
+                dynamic_config.clear_cache()
+        except:
+            pass
         
-        if 'presence_threshold_cm' in config_updates:
-            Config.PRESENCE_THRESHOLD_CM = int(config_updates['presence_threshold_cm'])
-            updated_keys.append('presence_threshold_cm')
-        
-        # Handle password change
-        if config_updates.get('new_admin_password'):
-            Config.ADMIN_PASSWORD = config_updates['new_admin_password']
-            updated_keys.append('admin_password')
-        
-        logger.info(f"Admin updated configuration keys: {updated_keys}")
+        logger.info(f"Admin updated configuration: {updated_keys}")
         
         return jsonify({
             'success': True,
-            'message': f'Configurazione aggiornata ({len(updated_keys)} parametri)',
+            'message': f'Configurazione aggiornata ({len(updated_keys)} valori)',
             'updated_keys': updated_keys
         })
         
