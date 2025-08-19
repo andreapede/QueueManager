@@ -1022,3 +1022,29 @@ def import_users():
     except Exception as e:
         logger.error(f"Error importing users: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
+@api_bp.route('/admin/events', methods=['GET'])
+def get_admin_events():
+    """Get recent system events for admin dashboard"""
+    if not require_admin_auth():
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        # Get recent events from database
+        limit = request.args.get('limit', 50, type=int)
+        events = db_manager.get_recent_events(limit)
+        
+        logger.info(f"Admin requested {len(events)} recent events")
+        
+        return jsonify({
+            'success': True,
+            'events': events,
+            'count': len(events)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin events: {e}")
+        return jsonify({'error': 'Internal server error'}), 500

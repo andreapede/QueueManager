@@ -700,3 +700,63 @@ class DatabaseManager:
         except Exception as e:
             self.logger.error(f"Error initializing default config: {e}")
             return False
+    
+    def get_recent_events(self, limit=50):
+        """
+        Ottiene gli eventi recenti dal database per la dashboard admin
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("""
+                    SELECT timestamp, event_type, details 
+                    FROM events 
+                    ORDER BY timestamp DESC 
+                    LIMIT ?
+                """, (limit,))
+                
+                events = []
+                for row in cursor.fetchall():
+                    # Formatta il timestamp per la dashboard
+                    dt = datetime.strptime(row['timestamp'], '%Y-%m-%d %H:%M:%S')
+                    formatted_time = dt.strftime('%d/%m %H:%M')
+                    
+                    # Crea descrizione user-friendly
+                    description = self._format_event_description(row['event_type'], row['details'])
+                    
+                    events.append({
+                        'timestamp': formatted_time,
+                        'event_type': row['event_type'],
+                        'details': description
+                    })
+                
+                return events
+                
+        except Exception as e:
+            self.logger.error(f"Error getting recent events: {e}")
+            return []
+    
+    def _format_event_description(self, event_type, details):
+        """
+        Formatta la descrizione dell'evento per la dashboard
+        """
+        if event_type == 'BOOKING_CREATED':
+            return f"Prenotazione creata - {details}"
+        elif event_type == 'BOOKING_CANCELLED':
+            return f"Prenotazione cancellata - {details}"
+        elif event_type == 'OFFICE_OCCUPIED':
+            return f"Ufficio occupato - {details}"
+        elif event_type == 'OFFICE_FREE':
+            return f"Ufficio liberato - {details}"
+        elif event_type == 'NO_SHOW':
+            return f"No-show rilevato - {details}"
+        elif event_type == 'CONFIG_CHANGED':
+            return f"Configurazione modificata - {details}"
+        elif event_type == 'QUEUE_POSITION_CHANGED':
+            return f"Posizione in coda cambiata - {details}"
+        elif event_type == 'USER_ENTERED_OFFICE':
+            return f"Utente entrato in ufficio - {details}"
+        elif event_type == 'USER_LEFT_OFFICE':
+            return f"Utente uscito dall'ufficio - {details}"
+        else:
+            return details or event_type
