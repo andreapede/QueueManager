@@ -11,6 +11,7 @@ import os
 import sys
 import logging
 from datetime import datetime, timedelta
+from typing import List, Dict, Optional
 import threading
 import time
 
@@ -564,7 +565,7 @@ class QueueManagerApp:
                     self.current_user = None
                     # Let hardware sensor manage the session
             else:
-                self.logger.info("Office is currently free - cleaning up any stale reservations")
+                self.logger.info("Office is currently free - analyzing queue state")
                 self.current_state = 'LIBERO'
                 self.current_user = None
                 
@@ -592,10 +593,43 @@ class QueueManagerApp:
             if expired_count > 0:
                 self.logger.info(f"Cleaned up {expired_count} expired reservations")
             
-            # 5. Process queue if office is free and there are people waiting
-            if self.current_state == 'LIBERO' and queue:
-                self.logger.info("Processing queue after recovery")
-                self.process_queue()
+            # 5. Re-check queue after cleanup and process if office is free
+            if self.current_state == 'LIBERO':
+                # Get fresh queue with only valid (non-expired) reservations
+                valid_reservations = self.get_valid_queue_reservations(timeout_minutes)
+                
+                if valid_reservations:
+                    self.logger.info(f"Found {len(valid_reservations)} valid reservations in queue after cleanup")
+                    
+                    # Activate queue for the first valid reservation
+                    first_valid = valid_reservations[0]
+                    self.logger.info(f"Activating queue for user {first_valid['user_code']} during recovery")
+                    
+                    try:
+                        # Process the queue to activate the first valid reservation
+                        self.process_queue()
+                        
+                        # Log successful queue activation during recovery
+                        self.db.log_event(
+                            event_type='QUEUE_ACTIVATED_RECOVERY',
+                            user_code=first_valid['user_code'],
+                            state_from='LIBERO',
+                            state_to='CODA_ATTIVA',
+                            queue_size=len(valid_reservations),
+                            details=f'Queue successfully activated during recovery - {len(valid_reservations)} people waiting'
+                        )
+                        
+                    except Exception as e:
+                        self.logger.error(f"Failed to process queue during recovery: {e}")
+                        # Log the failure but continue with recovery
+                        self.db.log_event(
+                            event_type='QUEUE_RECOVERY_FAILED',
+                            user_code=first_valid['user_code'],
+                            queue_size=len(valid_reservations),
+                            details=f'Failed to activate queue during recovery: {str(e)}'
+                        )
+                else:
+                    self.logger.info("No valid reservations found in queue after cleanup - system ready")
             
             # 6. Log recovery completion
             self.db.log_event(
@@ -628,6 +662,24 @@ class QueueManagerApp:
             self.logger.error(f"Error getting active reservations: {e}")
             return []
     
+    def get_valid_queue_reservations(self, timeout_minutes: int) -> List[Dict]:
+        """Get queue reservations that are still within timeout window"""
+        try:
+            cutoff_time = datetime.now() - timedelta(minutes=timeout_minutes)
+            
+            with self.db.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT q.id, q.user_code, q.timestamp, q.status, u.name as user_name
+                    FROM queue q
+                    JOIN users u ON q.user_code = u.code
+                    WHERE q.status = 'waiting' AND q.timestamp > ?
+                    ORDER BY q.timestamp
+                """, (cutoff_time.isoformat(),))
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            self.logger.error(f"Error getting valid queue reservations: {e}")
+            return []
+
     def cleanup_expired_reservations(self, timeout_minutes: int) -> int:
         """Clean up expired waiting reservations, returns count of cleaned reservations"""
         try:

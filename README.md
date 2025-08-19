@@ -25,8 +25,10 @@ Sistema completo per la gestione intelligente dell'accesso ad un ufficio attrave
 ### 🔄 **Startup Recovery System**
 - **Auto-diagnosi**: Controllo stato hardware vs database al riavvio
 - **Pulizia Intelligente**: Rimozione prenotazioni scadute/orfane
-- **Ripristino Sessioni**: Continuazione sessioni attive interrotte
+- **Ripristino Sessioni**: Continuazione sessioni attive interrotte  
+- **Attivazione Coda**: Se ufficio libero e prenotazioni valide → scala automaticamente la coda
 - **Consistenza Dati**: Allineamento automatico realtà fisica/digitale
+- **Recovery Robusto**: Gestione errori con fallback sicuro
 
 ## 🔧 Hardware Richiesto
 
