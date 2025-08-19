@@ -870,5 +870,62 @@ class DatabaseManager:
             return f"Utente entrato in ufficio - {details}"
         elif event_type == 'USER_LEFT_OFFICE':
             return f"Utente uscito dall'ufficio - {details}"
+        elif event_type == 'SYSTEM_RECOVERY':
+            return f"Sistema ripristinato dopo riavvio - {details}"
+        elif event_type == 'NO_SHOW_CLEANUP':
+            return f"Pulizia no-show al riavvio - {details}"
+        elif event_type == 'RESERVATION_EXPIRED':
+            return f"Prenotazione scaduta - {details}"
         else:
             return details or event_type
+    
+    def get_system_recovery_stats(self):
+        """Get statistics about system recoveries and restarts"""
+        try:
+            with self.get_connection() as conn:
+                # Count recoveries in last 30 days
+                cursor = conn.execute("""
+                    SELECT COUNT(*) as recovery_count
+                    FROM events
+                    WHERE event_type = 'SYSTEM_RECOVERY'
+                    AND timestamp >= datetime('now', '-30 days')
+                """)
+                recovery_stats = dict(cursor.fetchone())
+                
+                # Get last recovery time
+                cursor = conn.execute("""
+                    SELECT timestamp, details
+                    FROM events
+                    WHERE event_type = 'SYSTEM_RECOVERY'
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                """)
+                last_recovery = cursor.fetchone()
+                
+                if last_recovery:
+                    recovery_stats['last_recovery_time'] = last_recovery['timestamp']
+                    recovery_stats['last_recovery_details'] = last_recovery['details']
+                else:
+                    recovery_stats['last_recovery_time'] = None
+                    recovery_stats['last_recovery_details'] = None
+                
+                # Count no-shows from recovery cleanup
+                cursor = conn.execute("""
+                    SELECT COUNT(*) as cleanup_no_shows
+                    FROM events
+                    WHERE event_type IN ('NO_SHOW_CLEANUP', 'RESERVATION_EXPIRED')
+                    AND timestamp >= datetime('now', '-30 days')
+                """)
+                cleanup_stats = dict(cursor.fetchone())
+                recovery_stats.update(cleanup_stats)
+                
+                return recovery_stats
+                
+        except Exception as e:
+            self.logger.error(f"Error getting recovery stats: {e}")
+            return {
+                'recovery_count': 0,
+                'last_recovery_time': None,
+                'last_recovery_details': None,
+                'cleanup_no_shows': 0
+            }

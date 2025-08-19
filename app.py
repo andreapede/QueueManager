@@ -487,6 +487,9 @@ class QueueManagerApp:
             # Initialize hardware
             self.hardware.initialize()
             
+            # Perform startup recovery
+            self.perform_startup_recovery()
+            
             # Start scheduler
             self.scheduler.start()
             
@@ -522,6 +525,139 @@ class QueueManagerApp:
             pass
         
         self.logger.info("Queue Manager System shutdown complete")
+    
+    def perform_startup_recovery(self):
+        """Perform system recovery after restart"""
+        try:
+            self.logger.info("Starting system recovery after restart...")
+            
+            # 1. Check current hardware state
+            current_occupied = self.hardware.is_occupied()
+            
+            # 2. Get queue state from database
+            queue = self.db.get_queue()
+            active_reservations = self.get_active_reservations()
+            
+            # 3. Recovery scenarios
+            if current_occupied:
+                self.logger.info("Office is currently occupied - recovering active state")
+                self.current_state = 'OCCUPATO'
+                
+                # Check if there's an active reservation
+                if active_reservations:
+                    active_user = active_reservations[0]
+                    self.logger.info(f"Resuming active session for user {active_user['user_code']}")
+                    self.current_user = active_user['user_code']
+                    
+                    # Check if session has exceeded max time
+                    start_time = datetime.fromisoformat(active_user['start_time'])
+                    elapsed_minutes = (datetime.now() - start_time).total_seconds() / 60
+                    max_time = dynamic_config.get('max_occupancy_minutes', Config.MAX_OCCUPANCY_MINUTES)
+                    
+                    if elapsed_minutes > max_time:
+                        self.logger.warning(f"Session exceeded max time ({elapsed_minutes:.1f} > {max_time})")
+                        # Force end session
+                        self.handle_direct_exit()
+                else:
+                    # Office occupied but no active reservation - someone entered directly
+                    self.logger.info("Office occupied with no active reservation - direct access detected")
+                    self.current_user = None
+                    # Let hardware sensor manage the session
+            else:
+                self.logger.info("Office is currently free - cleaning up any stale reservations")
+                self.current_state = 'LIBERO'
+                self.current_user = None
+                
+                # Clean up any stale active reservations
+                if active_reservations:
+                    for reservation in active_reservations:
+                        self.logger.warning(f"Cleaning up stale reservation for {reservation['user_code']}")
+                        self.db.mark_reservation_no_show(reservation['user_code'])
+                        
+                        # Log no-show event
+                        self.db.log_event(
+                            event_type='NO_SHOW_CLEANUP',
+                            user_code=reservation['user_code'],
+                            state_from='active',
+                            state_to='no_show',
+                            queue_size=len(queue),
+                            no_show=True,
+                            details='Cleaned up during startup recovery'
+                        )
+            
+            # 4. Clean up expired waiting reservations
+            timeout_minutes = dynamic_config.get('reservation_timeout_minutes', Config.RESERVATION_TIMEOUT_MINUTES)
+            expired_count = self.cleanup_expired_reservations(timeout_minutes)
+            
+            if expired_count > 0:
+                self.logger.info(f"Cleaned up {expired_count} expired reservations")
+            
+            # 5. Process queue if office is free and there are people waiting
+            if self.current_state == 'LIBERO' and queue:
+                self.logger.info("Processing queue after recovery")
+                self.process_queue()
+            
+            # 6. Log recovery completion
+            self.db.log_event(
+                event_type='SYSTEM_RECOVERY',
+                state_from='shutdown',
+                state_to=self.current_state,
+                queue_size=len(self.db.get_queue()),
+                details=f'System recovered, office_occupied={current_occupied}, active_reservations={len(active_reservations)}'
+            )
+            
+            self.logger.info("System recovery completed successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Error during startup recovery: {e}")
+            # Continue startup even if recovery fails
+    
+    def get_active_reservations(self):
+        """Get reservations marked as active"""
+        try:
+            with self.db.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT q.id, q.user_code, q.start_time, u.name as user_name
+                    FROM queue q
+                    JOIN users u ON q.user_code = u.code
+                    WHERE q.status = 'active'
+                    ORDER BY q.start_time
+                """)
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            self.logger.error(f"Error getting active reservations: {e}")
+            return []
+    
+    def cleanup_expired_reservations(self, timeout_minutes: int) -> int:
+        """Clean up expired waiting reservations, returns count of cleaned reservations"""
+        try:
+            cutoff_time = datetime.now() - timedelta(minutes=timeout_minutes)
+            
+            with self.db.get_connection() as conn:
+                # Get expired reservations before deleting
+                cursor = conn.execute("""
+                    SELECT user_code FROM queue
+                    WHERE status = 'waiting' AND timestamp < ?
+                """, (cutoff_time.isoformat(),))
+                expired_users = [row['user_code'] for row in cursor.fetchall()]
+                
+                # Mark as no-show
+                for user_code in expired_users:
+                    self.db.mark_reservation_no_show(user_code)
+                    self.db.log_event(
+                        event_type='RESERVATION_EXPIRED',
+                        user_code=user_code,
+                        state_from='waiting',
+                        state_to='no_show',
+                        no_show=True,
+                        details='Expired during startup recovery'
+                    )
+                
+                return len(expired_users)
+                
+        except Exception as e:
+            self.logger.error(f"Error cleaning expired reservations: {e}")
+            return 0
 
 # Create global app instance
 app_instance = None
