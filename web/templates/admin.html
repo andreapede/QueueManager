@@ -384,26 +384,24 @@
                 const response = await fetch(`/api/admin/stats?period=${period}`);
                 const data = await response.json();
                 
-                if (data.success) {
-                    const stats = data.stats;
-                    
+                if (response.ok && data.detailed) {
                     // Update occupancy statistics
-                    document.getElementById('total-occupations').textContent = stats.occupancy?.total_sessions || 0;
-                    document.getElementById('avg-duration').textContent = Math.round(stats.occupancy?.avg_duration_minutes || 0);
-                    document.getElementById('total-usage').textContent = Math.round((stats.occupancy?.total_usage_minutes || 0) / 60 * 10) / 10;
+                    document.getElementById('total-occupations').textContent = data.detailed.occupancy?.total_sessions || 0;
+                    document.getElementById('avg-duration').textContent = Math.round(data.detailed.occupancy?.avg_duration_minutes || 0);
+                    document.getElementById('total-usage').textContent = Math.round((data.detailed.occupancy?.total_usage_minutes || 0) / 60 * 10) / 10;
                     
                     // Update reliability statistics
-                    document.getElementById('success-rate').textContent = (stats.reliability?.success_rate_percent || 0).toFixed(1);
-                    document.getElementById('no-shows').textContent = stats.reliability?.no_shows || 0;
+                    document.getElementById('success-rate').textContent = (data.detailed.occupancy?.success_rate_percent || 0).toFixed(1);
+                    document.getElementById('no-shows').textContent = data.detailed.no_show_stats?.total_no_shows || 0;
                     
                     // Update access method statistics
-                    document.getElementById('web-bookings').textContent = stats.access_methods?.web_bookings || 0;
-                    document.getElementById('physical-access').textContent = stats.access_methods?.physical_button || 0;
+                    document.getElementById('web-bookings').textContent = data.detailed.access_types?.reservation || 0;
+                    document.getElementById('physical-access').textContent = data.detailed.access_types?.direct || 0;
                     
                     // Update queue statistics
-                    document.getElementById('max-queue-size').textContent = stats.queue?.max_size || 0;
+                    document.getElementById('max-queue-size').textContent = data.detailed.queue_stats?.max_size || 0;
                 } else {
-                    showAlert('Errore nel caricamento statistiche: ' + data.error, 'danger');
+                    showAlert('Errore nel caricamento statistiche: ' + (data.error || 'Risposta non valida'), 'danger');
                 }
             } catch (error) {
                 console.error('Error loading detailed stats:', error);

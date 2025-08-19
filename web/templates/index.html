@@ -471,36 +471,8 @@
         
         <div class="stats-grid">
             <div class="stat-item">
-                <div id="stat-today-visits" class="stat-value">-</div>
-                <div class="stat-label">Visite Oggi</div>
-            </div>
-            <div class="stat-item">
                 <div id="stat-avg-duration" class="stat-value">-</div>
-                <div class="stat-label">Durata Media (min)</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-queue-size" class="stat-value">-</div>
-                <div class="stat-label">Persone in Coda</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-usage-time" class="stat-value">-</div>
-                <div class="stat-label">Utilizzo Oggi (ore)</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-reliability" class="stat-value">-</div>
-                <div class="stat-label">Affidabilità</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-no-shows" class="stat-value">-</div>
-                <div class="stat-label">No-show</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-web-bookings" class="stat-value">-</div>
-                <div class="stat-label">Prenotazioni Web</div>
-            </div>
-            <div class="stat-item">
-                <div id="stat-physical-access" class="stat-value">-</div>
-                <div class="stat-label">Accesso Diretto</div>
+                <div class="stat-label">Tempo Attesa Medio (min)</div>
             </div>
         </div>
     </div>
@@ -700,32 +672,8 @@
                 const response = await fetch('/api/stats');
                 const data = await response.json();
                 
-                // Basic stats
-                document.getElementById('stat-today-visits').textContent = data.occupancy?.total_sessions || '0';
+                // Solo il tempo di attesa medio
                 document.getElementById('stat-avg-duration').textContent = Math.round(data.occupancy?.avg_duration_minutes || 0) + ' min';
-                document.getElementById('stat-queue-size').textContent = data.queue?.max_size || '0';
-                document.getElementById('stat-usage-time').textContent = Math.round((data.occupancy?.total_usage_minutes || 0) / 60 * 10) / 10 + ' ore';
-                
-                // Additional stats if elements exist
-                const reliabilityEl = document.getElementById('stat-reliability');
-                if (reliabilityEl) {
-                    reliabilityEl.textContent = data.reliability?.success_rate_percent?.toFixed(1) + '%';
-                }
-                
-                const noShowEl = document.getElementById('stat-no-shows');
-                if (noShowEl) {
-                    noShowEl.textContent = data.reliability?.no_shows || '0';
-                }
-                
-                const webBookingsEl = document.getElementById('stat-web-bookings');
-                if (webBookingsEl) {
-                    webBookingsEl.textContent = data.access_methods?.web_bookings || '0';
-                }
-                
-                const physicalAccessEl = document.getElementById('stat-physical-access');
-                if (physicalAccessEl) {
-                    physicalAccessEl.textContent = data.access_methods?.physical_button || '0';
-                }
                 
             } catch (error) {
                 console.error('Error loading stats:', error);
