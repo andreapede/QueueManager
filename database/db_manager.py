@@ -603,6 +603,20 @@ class DatabaseManager:
             
             return stats
     
+    def get_average_occupation_time(self) -> Optional[int]:
+        """Get average occupation time in minutes from recent data"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT AVG(duration_minutes) as avg_duration
+                FROM occupancy_stats
+                WHERE end_time IS NOT NULL 
+                AND start_time >= datetime('now', '-7 days')
+            """)
+            result = cursor.fetchone()
+            if result and result['avg_duration']:
+                return int(result['avg_duration'])
+            return None
+    
     def get_weekly_stats(self, start_date: datetime = None) -> List[Dict]:
         """Get weekly statistics"""
         if start_date is None:
