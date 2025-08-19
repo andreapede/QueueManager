@@ -133,6 +133,46 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
+        .stats-period-selector {
+            margin-bottom: 15px;
+        }
+        
+        .stats-period-selector select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        
+        .detailed-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .stat-detail {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-detail strong {
+            color: #333;
+            display: block;
+            font-size: 0.9em;
+        }
+        
+        .stat-detail span {
+            color: #667eea;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -164,13 +204,42 @@
             </div>
             
             <div class="admin-card">
-                <h3>📈 Statistiche</h3>
-                <div class="status-info">
-                    <p><strong>Accessi Oggi:</strong> <span id="daily-access">-</span></p>
-                    <p><strong>Tempo Medio:</strong> <span id="avg-time">-</span> min</p>
-                    <p><strong>Efficienza:</strong> <span id="efficiency">-</span>%</p>
+                <h3>📈 Statistiche Dettagliate</h3>
+                <div class="stats-period-selector">
+                    <label for="stats-period">Periodo:</label>
+                    <select id="stats-period" onchange="loadDetailedStats()">
+                        <option value="day">Oggi</option>
+                        <option value="week">Settimana</option>
+                        <option value="month">Mese</option>
+                    </select>
                 </div>
-                <button class="btn" onclick="viewDetailedStats()">📊 Statistiche Dettagliate</button>
+                <div class="detailed-stats-grid">
+                    <div class="stat-detail">
+                        <strong>Occupazioni Totali:</strong> <span id="total-occupations">-</span>
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Durata Media:</strong> <span id="avg-duration">-</span> min
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Tempo Utilizzo:</strong> <span id="total-usage">-</span> ore
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Tasso Successo:</strong> <span id="success-rate">-</span>%
+                    </div>
+                    <div class="stat-detail">
+                        <strong>No-show:</strong> <span id="no-shows">-</span>
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Prenotazioni Web:</strong> <span id="web-bookings">-</span>
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Accesso Diretto:</strong> <span id="physical-access">-</span>
+                    </div>
+                    <div class="stat-detail">
+                        <strong>Coda Max:</strong> <span id="max-queue-size">-</span>
+                    </div>
+                </div>
+                <button class="btn" onclick="loadDetailedStats()">� Aggiorna Statistiche</button>
             </div>
             
             <div class="admin-card">
@@ -203,6 +272,7 @@
             refreshStatus();
             refreshEvents();
             loadCurrentConfig();
+            loadDetailedStats();
         });
         
         async function refreshStatus() {
@@ -308,9 +378,37 @@
             }
         }
         
-        function viewDetailedStats() {
-            // TODO: Implement detailed stats modal or page
-            showAlert('Statistiche dettagliate - Da implementare', 'success');
+        async function loadDetailedStats() {
+            try {
+                const period = document.getElementById('stats-period').value;
+                const response = await fetch(`/api/admin/stats?period=${period}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    
+                    // Update occupancy statistics
+                    document.getElementById('total-occupations').textContent = stats.occupancy?.total_sessions || 0;
+                    document.getElementById('avg-duration').textContent = Math.round(stats.occupancy?.avg_duration_minutes || 0);
+                    document.getElementById('total-usage').textContent = Math.round((stats.occupancy?.total_usage_minutes || 0) / 60 * 10) / 10;
+                    
+                    // Update reliability statistics
+                    document.getElementById('success-rate').textContent = (stats.reliability?.success_rate_percent || 0).toFixed(1);
+                    document.getElementById('no-shows').textContent = stats.reliability?.no_shows || 0;
+                    
+                    // Update access method statistics
+                    document.getElementById('web-bookings').textContent = stats.access_methods?.web_bookings || 0;
+                    document.getElementById('physical-access').textContent = stats.access_methods?.physical_button || 0;
+                    
+                    // Update queue statistics
+                    document.getElementById('max-queue-size').textContent = stats.queue?.max_size || 0;
+                } else {
+                    showAlert('Errore nel caricamento statistiche: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                console.error('Error loading detailed stats:', error);
+                showAlert('Errore nel caricamento statistiche', 'danger');
+            }
         }
         
         function editConfig() {

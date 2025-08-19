@@ -461,17 +461,109 @@ class DatabaseManager:
                   queue_size, no_show, conflict_occurred, details))
             conn.commit()
     
-    def get_average_occupation_time(self, days: int = 7) -> Optional[float]:
-        """Get average occupation time in minutes"""
+    def get_comprehensive_stats(self, date: datetime = None, period: str = 'day') -> Dict:
+        """Get comprehensive statistics including no-shows, access types, etc."""
+        if date is None:
+            date = datetime.now()
+        
+        # Define time range based on period
+        if period == 'day':
+            start_date = date.strftime('%Y-%m-%d')
+            end_date = (date + timedelta(days=1)).strftime('%Y-%m-%d')
+        elif period == 'week':
+            start_date = (date - timedelta(days=6)).strftime('%Y-%m-%d')
+            end_date = (date + timedelta(days=1)).strftime('%Y-%m-%d')
+        elif period == 'month':
+            start_date = date.replace(day=1).strftime('%Y-%m-%d')
+            next_month = (date.replace(day=28) + timedelta(days=4)).replace(day=1)
+            end_date = next_month.strftime('%Y-%m-%d')
+        else:
+            raise ValueError("Period must be 'day', 'week', or 'month'")
+        
         with self.get_connection() as conn:
+            stats = {}
+            
+            # === OCCUPANCY STATISTICS ===
             cursor = conn.execute("""
-                SELECT AVG(duration_minutes) as avg_duration
+                SELECT 
+                    COUNT(*) as total_occupations,
+                    AVG(duration_minutes) as avg_duration,
+                    SUM(duration_minutes) as total_usage_minutes,
+                    MAX(duration_minutes) as max_duration,
+                    MIN(duration_minutes) as min_duration
                 FROM occupancy_stats
-                WHERE start_time >= datetime('now', '-{} days')
+                WHERE start_time >= ? AND start_time < ?
                 AND duration_minutes IS NOT NULL
-            """.format(days))
-            row = cursor.fetchone()
-            return row['avg_duration'] if row and row['avg_duration'] else None
+            """, (start_date, end_date))
+            occupancy_stats = dict(cursor.fetchone())
+            stats['occupancy'] = occupancy_stats
+            
+            # === ACCESS TYPE BREAKDOWN ===
+            cursor = conn.execute("""
+                SELECT 
+                    access_type,
+                    COUNT(*) as count,
+                    AVG(duration_minutes) as avg_duration
+                FROM occupancy_stats
+                WHERE start_time >= ? AND start_time < ?
+                GROUP BY access_type
+            """, (start_date, end_date))
+            access_types = {}
+            for row in cursor.fetchall():
+                access_types[row['access_type']] = {
+                    'count': row['count'],
+                    'avg_duration': round(row['avg_duration'], 1) if row['avg_duration'] else 0
+                }
+            stats['access_types'] = access_types
+            
+            # === NO-SHOW STATISTICS ===
+            cursor = conn.execute("""
+                SELECT COUNT(*) as no_show_count
+                FROM events
+                WHERE timestamp >= ? AND timestamp < ?
+                AND event_type = 'NO_SHOW'
+                AND no_show = 1
+            """, (start_date, end_date))
+            no_show_stats = dict(cursor.fetchone())
+            
+            # === BOOKING STATISTICS ===
+            cursor = conn.execute("""
+                SELECT COUNT(*) as total_bookings
+                FROM events
+                WHERE timestamp >= ? AND timestamp < ?
+                AND event_type = 'BOOKING_CREATED'
+            """, (start_date, end_date))
+            booking_stats = dict(cursor.fetchone())
+            
+            # === QUEUE STATISTICS ===
+            cursor = conn.execute("""
+                SELECT 
+                    MAX(queue_size) as max_queue_size,
+                    AVG(queue_size) as avg_queue_size
+                FROM events
+                WHERE timestamp >= ? AND timestamp < ?
+                AND queue_size IS NOT NULL
+            """, (start_date, end_date))
+            queue_stats = dict(cursor.fetchone())
+            
+            # === COMBINE STATISTICS ===
+            stats.update({
+                'no_shows': no_show_stats,
+                'bookings': booking_stats,
+                'queue': {
+                    'max_size': int(queue_stats['max_queue_size'] or 0),
+                    'avg_size': round(queue_stats['avg_queue_size'], 1) if queue_stats['avg_queue_size'] else 0
+                },
+                'summary': {
+                    'total_bookings': booking_stats['total_bookings'] or 0,
+                    'completed_sessions': occupancy_stats['total_occupations'] or 0,
+                    'no_shows': no_show_stats['no_show_count'] or 0,
+                    'success_rate': round((occupancy_stats['total_occupations'] or 0) / max(booking_stats['total_bookings'] or 1, 1) * 100, 1),
+                    'no_show_rate': round((no_show_stats['no_show_count'] or 0) / max(booking_stats['total_bookings'] or 1, 1) * 100, 1)
+                }
+            })
+            
+            return stats
     
     def get_daily_stats(self, date: datetime = None) -> Dict:
         """Get statistics for a specific day"""

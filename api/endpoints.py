@@ -370,15 +370,44 @@ def get_stats():
         if not db_manager:
             return jsonify({'error': 'Database not available'}), 500
         
-        # Get basic stats
-        stats = db_manager.get_daily_stats()
+        # Get period parameter (default to 'day')
+        period = request.args.get('period', 'day')
+        if period not in ['day', 'week', 'month']:
+            period = 'day'
+        
+        # Get comprehensive stats
+        stats = db_manager.get_comprehensive_stats(period=period)
         
         return jsonify({
-            'today': {
-                'total_sessions': stats.get('total_sessions', 0),
-                'average_duration_minutes': stats.get('avg_duration', 0),
-                'occupancy_percentage': stats.get('occupancy_percentage', 0),
-                'queue_peak': stats.get('max_queue_size', 0)
+            'period': period,
+            'occupancy': {
+                'total_sessions': stats['occupancy']['total_occupations'] or 0,
+                'avg_duration_minutes': round(stats['occupancy']['avg_duration'], 1) if stats['occupancy']['avg_duration'] else 0,
+                'total_usage_minutes': stats['occupancy']['total_usage_minutes'] or 0,
+                'max_duration_minutes': stats['occupancy']['max_duration'] or 0,
+                'min_duration_minutes': stats['occupancy']['min_duration'] or 0
+            },
+            'access_methods': {
+                'web_bookings': stats['access_types'].get('reservation', {}).get('count', 0),
+                'web_avg_duration': stats['access_types'].get('reservation', {}).get('avg_duration', 0),
+                'physical_button': stats['access_types'].get('direct', {}).get('count', 0),
+                'physical_avg_duration': stats['access_types'].get('direct', {}).get('avg_duration', 0)
+            },
+            'queue': {
+                'max_size': stats['queue']['max_size'],
+                'avg_size': stats['queue']['avg_size']
+            },
+            'reliability': {
+                'total_bookings': stats['summary']['total_bookings'],
+                'completed_sessions': stats['summary']['completed_sessions'],
+                'no_shows': stats['summary']['no_shows'],
+                'success_rate_percent': stats['summary']['success_rate'],
+                'no_show_rate_percent': stats['summary']['no_show_rate']
+            },
+            'summary': {
+                'efficiency_score': min(100, round(stats['summary']['success_rate'] * 1.2, 1)),
+                'usage_hours': round((stats['occupancy']['total_usage_minutes'] or 0) / 60, 1),
+                'avg_wait_time': round(stats['queue']['avg_size'] * (stats['occupancy']['avg_duration'] or 0), 1)
             }
         })
         
@@ -1086,6 +1115,66 @@ def import_users():
         
     except Exception as e:
         logger.error(f"Error importing users: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@api_bp.route('/admin/stats', methods=['GET'])
+def get_admin_stats():
+    """Get detailed statistics for admin dashboard"""
+    if not require_admin_auth():
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        # Get period parameter (default to 'day')
+        period = request.args.get('period', 'day')
+        if period not in ['day', 'week', 'month']:
+            period = 'day'
+        
+        # Get comprehensive stats
+        stats = db_manager.get_comprehensive_stats(period=period)
+        
+        # Get hourly breakdown for today if period is 'day'
+        hourly_stats = []
+        if period == 'day':
+            with db_manager.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT 
+                        strftime('%H', start_time) as hour,
+                        COUNT(*) as sessions,
+                        AVG(duration_minutes) as avg_duration
+                    FROM occupancy_stats
+                    WHERE DATE(start_time) = DATE('now')
+                    GROUP BY strftime('%H', start_time)
+                    ORDER BY hour
+                """)
+                hourly_stats = [dict(row) for row in cursor.fetchall()]
+        
+        # Get recent events (last 50)
+        recent_events = db_manager.get_recent_events()
+        
+        return jsonify({
+            'period': period,
+            'summary': stats['summary'],
+            'detailed': {
+                'occupancy': stats['occupancy'],
+                'access_types': stats['access_types'],
+                'queue_stats': stats['queue'],
+                'no_show_stats': stats['no_shows'],
+                'booking_stats': stats['bookings']
+            },
+            'trends': {
+                'hourly_breakdown': hourly_stats
+            },
+            'recent_activity': {
+                'events': recent_events[:10] if recent_events else [],
+                'total_events': len(recent_events) if recent_events else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @api_bp.route('/admin/events', methods=['GET'])
