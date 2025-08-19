@@ -317,7 +317,16 @@ class QueueManagerApp:
     
     def process_queue(self):
         """Process next person in queue"""
+        import traceback
+        caller_info = traceback.format_stack()[-2].strip()
+        self.logger.info(f"🔥 PROCESS_QUEUE CALLED FROM: {caller_info}")
+        
         self.logger.info(f"PROCESS_QUEUE called - Current state: {self.current_state}, Reserved for: {self.reserved_for_user}")
+        
+        # PROTECTION: Only process queue if office is actually free
+        if self.current_state != 'LIBERO':
+            self.logger.warning(f"❌ PROCESS_QUEUE BLOCKED - Office not free (state: {self.current_state}, reserved for: {self.reserved_for_user})")
+            return
         
         queue = self.db.get_queue()
         self.logger.info(f"PROCESS_QUEUE - Queue size: {len(queue)}")
