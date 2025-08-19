@@ -202,6 +202,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             refreshStatus();
             refreshEvents();
+            loadCurrentConfig();
         });
         
         async function refreshStatus() {
@@ -215,6 +216,25 @@
             } catch (error) {
                 console.error('Error fetching status:', error);
                 document.getElementById('current-status').textContent = 'Errore connessione';
+            }
+        }
+        
+        async function loadCurrentConfig() {
+            try {
+                const response = await fetch('/api/admin/config');
+                const data = await response.json();
+                
+                if (data.success && data.config) {
+                    const config = data.config;
+                    
+                    // Update configuration display values
+                    document.getElementById('reservation-timeout').textContent = config.reservation_timeout_minutes || 3;
+                    document.getElementById('max-occupancy').textContent = config.max_occupancy_minutes || 10;
+                    document.getElementById('max-queue').textContent = config.max_queue_size || 7;
+                }
+            } catch (error) {
+                console.error('Error loading configuration:', error);
+                // Keep default values if error
             }
         }
         
