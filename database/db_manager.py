@@ -742,6 +742,8 @@ class DatabaseManager:
         """
         if event_type == 'BOOKING_CREATED':
             return f"Prenotazione creata - {details}"
+        elif event_type == 'BOOKING_ACTIVATED':
+            return f"Turno attivato - {details}"
         elif event_type == 'BOOKING_CANCELLED':
             return f"Prenotazione cancellata - {details}"
         elif event_type == 'OFFICE_OCCUPIED':
@@ -754,6 +756,10 @@ class DatabaseManager:
             return f"Configurazione modificata - {details}"
         elif event_type == 'QUEUE_POSITION_CHANGED':
             return f"Posizione in coda cambiata - {details}"
+        elif event_type == 'QUEUE_CLEARED':
+            return f"Coda svuotata - {details}"
+        elif event_type == 'SYSTEM_RESET':
+            return f"Sistema resettato - {details}"
         elif event_type == 'USER_ENTERED_OFFICE':
             return f"Utente entrato in ufficio - {details}"
         elif event_type == 'USER_LEFT_OFFICE':

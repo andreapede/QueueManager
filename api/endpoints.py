@@ -108,7 +108,7 @@ def book_office():
                 event_type='BOOKING_CREATED',
                 user_code=user_code,
                 queue_size=1,
-                details=f'Prenotazione immediata - ufficio libero'
+                details=f'Prenotazione immediata per utente {user_code} - ufficio libero'
             )
             
             # Then immediately activate the reservation
@@ -151,7 +151,7 @@ def book_office():
             event_type='BOOKING_CREATED',
             user_code=user_code,
             queue_size=len(queue),
-            details=f'Posizione {position} in coda'
+            details=f'Utente {user_code} aggiunto alla coda - Posizione {position}'
         )
         
         # Send notification
@@ -213,7 +213,7 @@ def replace_queue_position():
             event_type='QUEUE_POSITION_CHANGED',
             user_code=user_code,
             queue_size=len(queue),
-            details=f'Spostato dalla posizione {old_position} alla posizione {new_position}'
+            details=f'Utente {user_code} spostato dalla posizione {old_position} alla posizione {new_position}'
         )
         
         # Send notification
@@ -453,9 +453,11 @@ def admin_reset():
         
         # Log system reset event
         if db_manager:
+            admin_user = session.get('admin_user', 'amministratore')
             db_manager.log_event(
                 event_type='SYSTEM_RESET',
-                details='Sistema resettato dall\'amministratore'
+                user_code=admin_user,
+                details=f'Sistema resettato dall\'amministratore {admin_user}'
             )
         
         logger.info("System reset by admin")
@@ -477,10 +479,12 @@ def admin_clear_queue():
             db_manager.clear_queue()
             
             # Log queue cleared event
+            admin_user = session.get('admin_user', 'amministratore')
             db_manager.log_event(
                 event_type='QUEUE_CLEARED',
+                user_code=admin_user,
                 queue_size=0,
-                details=f'Coda svuotata dall\'amministratore ({cleared_count} prenotazioni rimosse)'
+                details=f'Coda svuotata dall\'amministratore {admin_user} ({cleared_count} prenotazioni rimosse)'
             )
             
             if notification_manager:
@@ -660,9 +664,12 @@ def update_admin_config():
         
         # Log configuration change event
         if updated_keys:
+            # Get admin user from session if available
+            admin_user = session.get('admin_user', 'amministratore')
             db_manager.log_event(
                 event_type='CONFIG_CHANGED',
-                details=f'Configurazione modificata: {", ".join(updated_keys)}'
+                user_code=admin_user,
+                details=f'Configurazione modificata da {admin_user}: {", ".join(updated_keys)}'
             )
         
         return jsonify({

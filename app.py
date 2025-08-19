@@ -327,6 +327,16 @@ class QueueManagerApp:
             # Mark as active
             self.db.mark_reservation_active(next_reservation['id'])
             
+            # Log queue processed event
+            self.db.log_event(
+                event_type='BOOKING_ACTIVATED',
+                user_code=self.reserved_for_user,
+                queue_size=len(queue)-1,  # -1 because this person is now active
+                state_from='LIBERO',
+                state_to='RISERVATO_ATTESA',
+                details=f'Turno attivato per utente {self.reserved_for_user} - Era in posizione 1'
+            )
+            
             # Send notification
             self.notifications.send_your_turn_notification(
                 user_code=self.reserved_for_user,
@@ -345,6 +355,16 @@ class QueueManagerApp:
             now > self.reservation_timeout):
             
             self.logger.info(f"Reservation timeout for {self.reserved_for_user}")
+            
+            # Log no-show event
+            self.db.log_event(
+                event_type='NO_SHOW',
+                user_code=self.reserved_for_user,
+                no_show=True,
+                state_from='RISERVATO_ATTESA',
+                state_to='LIBERO',
+                details=f'No-show dell\'utente {self.reserved_for_user} - timeout prenotazione scaduto'
+            )
             
             # Mark as no-show
             self.db.mark_reservation_no_show(self.reserved_for_user)
