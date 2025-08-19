@@ -235,9 +235,7 @@ class QueueManagerApp:
             if self.hardware.button_pressed():
                 self.handle_direct_access()
             
-            # Check if there's a queue and office is free
-            elif not presence_detected:
-                self.process_queue()
+            # No automatic queue processing here - only after events
         
         elif self.current_state in ['OCCUPATO_DIRETTO', 'OCCUPATO_PRENOTATO']:
             # Check if office is now empty
