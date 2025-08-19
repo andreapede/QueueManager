@@ -249,6 +249,16 @@ class QueueManagerApp:
             if presence_detected:
                 self.current_state = 'OCCUPATO_PRENOTATO'
                 self.occupation_start = datetime.now()
+                
+                # Log user entered office event
+                self.db.log_event(
+                    event_type='USER_ENTERED_OFFICE',
+                    user_code=self.reserved_for_user,
+                    state_from='RISERVATO_ATTESA',
+                    state_to='OCCUPATO_PRENOTATO',
+                    details=f'Utente {self.reserved_for_user} entrato in ufficio'
+                )
+                
                 self.logger.info(f"User {self.reserved_for_user} entered office")
     
     def handle_direct_access(self):
@@ -261,9 +271,10 @@ class QueueManagerApp:
             
             # Log the event
             self.db.log_event(
-                event_type='direct_access',
+                event_type='USER_ENTERED_OFFICE',
                 state_from='LIBERO',
-                state_to='OCCUPATO_DIRETTO'
+                state_to='OCCUPATO_DIRETTO',
+                details='Accesso diretto tramite pulsante'
             )
         else:
             # Respect queue - show message on display
@@ -282,6 +293,16 @@ class QueueManagerApp:
             access_type='direct' if self.current_state == 'OCCUPATO_DIRETTO' else 'reservation',
             user_code=self.reserved_for_user,
             duration_minutes=duration
+        )
+        
+        # Log office vacated event
+        self.db.log_event(
+            event_type='USER_LEFT_OFFICE',
+            user_code=self.reserved_for_user,
+            duration_minutes=duration,
+            state_from=self.current_state,
+            state_to='LIBERO',
+            details=f'Durata occupazione: {duration} minuti' if duration else 'Ufficio liberato'
         )
         
         # Reset state

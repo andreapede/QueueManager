@@ -103,6 +103,14 @@ def book_office():
             # Add to queue first
             reservation_id = db_manager.add_to_queue(user_code)
             
+            # Log booking created event
+            db_manager.log_event(
+                event_type='BOOKING_CREATED',
+                user_code=user_code,
+                queue_size=1,
+                details=f'Prenotazione immediata - ufficio libero'
+            )
+            
             # Then immediately activate the reservation
             from datetime import timedelta
             app_instance.current_state = 'RISERVATO_ATTESA'
@@ -137,6 +145,14 @@ def book_office():
         # Get position in queue
         queue = db_manager.get_queue()
         position = next(i + 1 for i, item in enumerate(queue) if item['id'] == reservation_id)
+        
+        # Log booking created event
+        db_manager.log_event(
+            event_type='BOOKING_CREATED',
+            user_code=user_code,
+            queue_size=len(queue),
+            details=f'Posizione {position} in coda'
+        )
         
         # Send notification
         if notification_manager:
@@ -191,6 +207,14 @@ def replace_queue_position():
         # Get new position
         queue = db_manager.get_queue()
         new_position = next(i + 1 for i, item in enumerate(queue) if item['id'] == reservation_id)
+        
+        # Log position change event
+        db_manager.log_event(
+            event_type='QUEUE_POSITION_CHANGED',
+            user_code=user_code,
+            queue_size=len(queue),
+            details=f'Spostato dalla posizione {old_position} alla posizione {new_position}'
+        )
         
         # Send notification
         if notification_manager:
@@ -427,6 +451,13 @@ def admin_reset():
         if notification_manager:
             notification_manager.send_system_reset()
         
+        # Log system reset event
+        if db_manager:
+            db_manager.log_event(
+                event_type='SYSTEM_RESET',
+                details='Sistema resettato dall\'amministratore'
+            )
+        
         logger.info("System reset by admin")
         return jsonify({'success': True, 'message': 'System reset complete'})
         
@@ -444,6 +475,13 @@ def admin_clear_queue():
         if db_manager:
             cleared_count = len(db_manager.get_queue())
             db_manager.clear_queue()
+            
+            # Log queue cleared event
+            db_manager.log_event(
+                event_type='QUEUE_CLEARED',
+                queue_size=0,
+                details=f'Coda svuotata dall\'amministratore ({cleared_count} prenotazioni rimosse)'
+            )
             
             if notification_manager:
                 notification_manager.send_queue_cleared()
@@ -619,6 +657,13 @@ def update_admin_config():
             pass
         
         logger.info(f"Admin updated configuration: {updated_keys}")
+        
+        # Log configuration change event
+        if updated_keys:
+            db_manager.log_event(
+                event_type='CONFIG_CHANGED',
+                details=f'Configurazione modificata: {", ".join(updated_keys)}'
+            )
         
         return jsonify({
             'success': True,
