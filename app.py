@@ -173,7 +173,7 @@ class QueueManagerApp:
             base_wait_time = max(0, avg_duration - elapsed)
         elif self.current_state == 'RISERVATO_ATTESA':
             # If reserved but not occupied yet, add reservation timeout
-            base_wait_time = Config.RESERVATION_TIMEOUT_MINUTES
+            base_wait_time = self.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES
         
         status = {
             'status': self.current_state,

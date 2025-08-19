@@ -111,7 +111,7 @@ def book_office():
             # IMMEDIATELY change state to prevent race conditions
             app_instance.current_state = 'RISERVATO_ATTESA'
             app_instance.reserved_for_user = user_code
-            app_instance.reservation_timeout = datetime.now() + timedelta(minutes=Config.RESERVATION_TIMEOUT_MINUTES)
+            app_instance.reservation_timeout = datetime.now() + timedelta(minutes=app_instance.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES)
             
             logger.info(f"STATE CHANGED - New state: {app_instance.current_state}, Reserved for: {app_instance.reserved_for_user}")
             
@@ -133,14 +133,14 @@ def book_office():
             if notification_manager:
                 notification_manager.send_your_turn_notification(
                     user_code=user_code,
-                    timeout_minutes=Config.RESERVATION_TIMEOUT_MINUTES
+                    timeout_minutes=app_instance.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES
                 )
             
             logger.info(f"Office was free - activated reservation immediately for {user_code}")
             
             return jsonify({
                 'success': True,
-                'message': f'È il tuo turno! Vai in ufficio entro {Config.RESERVATION_TIMEOUT_MINUTES} minuti',
+                'message': f'È il tuo turno! Vai in ufficio entro {app_instance.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES} minuti',
                 'reservation_id': reservation_id,
                 'position': 1,  # First in line
                 'estimated_wait_minutes': 0,  # No wait time
