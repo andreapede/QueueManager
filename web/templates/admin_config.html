@@ -217,14 +217,14 @@
                     <div class="form-group">
                         <label for="reservation_timeout">Timeout Prenotazione (minuti)</label>
                         <input type="number" id="reservation_timeout" name="reservation_timeout_minutes" 
-                               min="1" max="15" value="3">
+                               min="1" max="15">
                         <div class="form-help">Tempo massimo per presentarsi dopo la prenotazione</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="max_occupancy">Occupazione Massima (minuti)</label>
                         <input type="number" id="max_occupancy" name="max_occupancy_minutes" 
-                               min="5" max="60" value="10">
+                               min="5" max="60">
                         <div class="form-help">Tempo massimo di utilizzo dell'ufficio</div>
                     </div>
                 </div>
@@ -233,13 +233,13 @@
                     <div class="form-group">
                         <label for="movement_timeout">Timeout Movimento (minuti)</label>
                         <input type="number" id="movement_timeout" name="movement_timeout_minutes" 
-                               min="1" max="10" value="5">
+                               min="1" max="10">
                         <div class="form-help">Tempo dopo il quale viene richiesto movimento</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="auto_reset_time">Reset Automatico</label>
-                        <input type="time" id="auto_reset_time" name="auto_reset_time" value="23:59">
+                        <input type="time" id="auto_reset_time" name="auto_reset_time">
                         <div class="form-help">Orario di reset giornaliero del sistema</div>
                     </div>
                 </div>
@@ -253,7 +253,7 @@
                     <div class="form-group">
                         <label for="max_queue_size">Dimensione Massima Coda</label>
                         <input type="number" id="max_queue_size" name="max_queue_size" 
-                               min="1" max="20" value="7">
+                               min="1" max="20">
                         <div class="form-help">Numero massimo di persone in coda</div>
                     </div>
                     
@@ -288,7 +288,7 @@
                     <div class="form-group">
                         <label for="presence_threshold">Soglia Presenza (cm)</label>
                         <input type="number" id="presence_threshold" name="presence_threshold_cm" 
-                               min="50" max="400" value="200">
+                               min="50" max="400">
                         <div class="form-help">Distanza sotto la quale si rileva presenza</div>
                     </div>
                     
@@ -306,14 +306,14 @@
                     <div class="form-group">
                         <label for="pir_absence_seconds">Assenza PIR (secondi)</label>
                         <input type="number" id="pir_absence_seconds" name="pir_absence_seconds" 
-                               min="10" max="300" value="30">
+                               min="10" max="300">
                         <div class="form-help">Secondi di assenza prima di considerare ufficio libero</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="ultrasonic_polling">Polling Ultrasonico (secondi)</label>
                         <input type="number" id="ultrasonic_polling" name="ultrasonic_polling_seconds" 
-                               min="1" max="10" value="2">
+                               min="1" max="10">
                         <div class="form-help">Frequenza lettura sensore ultrasonico</div>
                     </div>
                 </div>
@@ -353,14 +353,14 @@
                     <div class="form-group">
                         <label for="session_timeout">Timeout Sessione (minuti)</label>
                         <input type="number" id="session_timeout" name="session_timeout_minutes" 
-                               min="10" max="120" value="30">
+                               min="10" max="120">
                         <div class="form-help">Durata sessione amministratore</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="max_login_attempts">Tentativi Login Massimi</label>
                         <input type="number" id="max_login_attempts" name="max_login_attempts" 
-                               min="3" max="10" value="3">
+                               min="3" max="10">
                         <div class="form-help">Numero massimo di tentativi di login</div>
                     </div>
                 </div>
@@ -369,7 +369,7 @@
                     <div class="form-group">
                         <label for="lockout_duration">Durata Blocco (minuti)</label>
                         <input type="number" id="lockout_duration" name="lockout_duration_minutes" 
-                               min="5" max="60" value="15">
+                               min="5" max="60">
                         <div class="form-help">Durata blocco dopo troppi tentativi</div>
                     </div>
                     

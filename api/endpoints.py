@@ -123,7 +123,7 @@ def book_office():
             
             return jsonify({
                 'success': True,
-                'message': 'È il tuo turno! Vai in ufficio entro 5 minuti',
+                'message': f'È il tuo turno! Vai in ufficio entro {Config.RESERVATION_TIMEOUT_MINUTES} minuti',
                 'reservation_id': reservation_id,
                 'position': 1,  # First in line
                 'estimated_wait_minutes': 0,  # No wait time
