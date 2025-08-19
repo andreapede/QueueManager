@@ -317,9 +317,15 @@ class QueueManagerApp:
     
     def process_queue(self):
         """Process next person in queue"""
+        self.logger.info(f"PROCESS_QUEUE called - Current state: {self.current_state}, Reserved for: {self.reserved_for_user}")
+        
         queue = self.db.get_queue()
+        self.logger.info(f"PROCESS_QUEUE - Queue size: {len(queue)}")
+        
         if queue:
             next_reservation = queue[0]
+            self.logger.info(f"PROCESS_QUEUE - Activating {next_reservation['user_code']} from position 1")
+            
             self.current_state = 'RISERVATO_ATTESA'
             self.reserved_for_user = next_reservation['user_code']
             self.reservation_timeout = datetime.now() + timedelta(minutes=self.get_dynamic_config().RESERVATION_TIMEOUT_MINUTES)
@@ -344,6 +350,8 @@ class QueueManagerApp:
             )
             
             self.logger.info(f"Activated reservation for {self.reserved_for_user}")
+        else:
+            self.logger.info("PROCESS_QUEUE - No queue to process")
     
     def check_timeouts(self):
         """Check for various timeout conditions"""

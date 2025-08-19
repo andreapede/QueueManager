@@ -4,7 +4,7 @@ RESTful API for web interface and external integrations
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request, session
 from typing import Dict, Any
 
@@ -68,13 +68,19 @@ def book_office():
         if not db_manager:
             return jsonify({'error': 'Database not available'}), 500
         
+        # Log current system state for debugging
+        current_state = app_instance.current_state if app_instance else 'UNKNOWN'
+        reserved_user = app_instance.reserved_for_user if app_instance else 'None'
+        queue_size = len(db_manager.get_queue())
+        
+        logger.info(f"BOOKING REQUEST - User: {user_code}, System State: {current_state}, Reserved for: {reserved_user}, Queue size: {queue_size}")
+        
         # Check if user exists
         user = db_manager.get_user(user_code)
         if not user:
             return jsonify({'error': 'Invalid user code'}), 400
         
         # Check queue size limit
-        queue_size = len(db_manager.get_queue())
         if queue_size >= 7:  # Config.MAX_QUEUE_SIZE
             return jsonify({'error': 'Queue is full'}), 400
         
@@ -100,8 +106,20 @@ def book_office():
         
         # If office is free, activate reservation immediately
         if app_instance and app_instance.current_state == 'LIBERO':
+            logger.info(f"OFFICE FREE - Activating immediate reservation for {user_code}")
+            
+            # IMMEDIATELY change state to prevent race conditions
+            app_instance.current_state = 'RISERVATO_ATTESA'
+            app_instance.reserved_for_user = user_code
+            app_instance.reservation_timeout = datetime.now() + timedelta(minutes=Config.RESERVATION_TIMEOUT_MINUTES)
+            
+            logger.info(f"STATE CHANGED - New state: {app_instance.current_state}, Reserved for: {app_instance.reserved_for_user}")
+            
             # Add to queue first
             reservation_id = db_manager.add_to_queue(user_code)
+            
+            # Mark as active in database
+            db_manager.mark_reservation_active(reservation_id)
             
             # Log booking created event
             db_manager.log_event(
@@ -110,15 +128,6 @@ def book_office():
                 queue_size=1,
                 details=f'Prenotazione immediata per utente {user_code} - ufficio libero'
             )
-            
-            # Then immediately activate the reservation
-            from datetime import timedelta
-            app_instance.current_state = 'RISERVATO_ATTESA'
-            app_instance.reserved_for_user = user_code
-            app_instance.reservation_timeout = datetime.now() + timedelta(minutes=Config.RESERVATION_TIMEOUT_MINUTES)
-            
-            # Mark as active in database
-            db_manager.mark_reservation_active(reservation_id)
             
             # Send your turn notification
             if notification_manager:
@@ -139,12 +148,16 @@ def book_office():
             })
         
         # Office is occupied/reserved - add to queue normally
+        logger.info(f"OFFICE BUSY - Adding {user_code} to queue normally (current state: {app_instance.current_state if app_instance else 'None'})")
+        
         # Add to queue
         reservation_id = db_manager.add_to_queue(user_code)
         
         # Get position in queue
         queue = db_manager.get_queue()
         position = next(i + 1 for i, item in enumerate(queue) if item['id'] == reservation_id)
+        
+        logger.info(f"QUEUE ADDED - {user_code} added at position {position}, total queue size: {len(queue)}")
         
         # Log booking created event
         db_manager.log_event(
